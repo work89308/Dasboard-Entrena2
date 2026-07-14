@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torre de Control · Equipo Atención Telefónica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg: #F4F6F7;
+  --bg-panel: #FFFFFF;
+  --ink: #10262A;
+  --ink-soft: #4E6367;
+  --ink-faint: #8A9B9E;
+  --line: #DEE6E6;
+  --brand: #1E6E68;
+  --brand-dark: #0F3D3A;
+  --brand-soft: #E4F0EE;
+  --accent-mint: #3FAE96;
+  --accent-amber: #E4A121;
+  --accent-amber-soft: #FBF0DB;
+  --accent-coral: #D65B45;
+  --accent-coral-soft: #FBE7E2;
+  --accent-blue: #3A6EA5;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(16,38,42,0.04), 0 6px 20px rgba(16,38,42,0.06);
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+::selection{ background: var(--accent-mint); color: #fff; }
+
+/* ---------- layout shell ---------- */
+.app{
+  display:flex;
+  min-height:100vh;
+}
+
+/* ---------- sidebar ---------- */
+.sidebar{
+  width: 240px;
+  flex-shrink:0;
+  background: linear-gradient(190deg, var(--brand-dark) 0%, #12433F 100%);
+  color: #EAF3F1;
+  display:flex;
+  flex-direction:column;
+  padding: 24px 16px;
+  position: sticky;
+  top:0;
+  height:100vh;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 4px 8px 26px 8px;
+}
+.brand-mark{
+  width:34px;height:34px;border-radius:9px;
+  background: linear-gradient(135deg, var(--accent-mint), #6FD3B8);
+  display:flex;align-items:center;justify-content:center;
+  font-family: var(--font-display); font-weight:700; color:#0B2E2A; font-size:15px;
+  flex-shrink:0;
+}
+.brand-text{ display:flex; flex-direction:column; line-height:1.15; }
+.brand-text b{ font-family:var(--font-display); font-size:15.5px; font-weight:600; letter-spacing:.2px;}
+.brand-text span{ font-size:11px; color:#9FC6BF; }
+
+.nav{ display:flex; flex-direction:column; gap:2px; margin-top: 6px;}
+.nav-item{
+  display:flex; align-items:center; gap:11px;
+  padding:10px 12px; border-radius:10px;
+  color:#C9E2DD; font-size:13.5px; font-weight:500;
+  cursor:pointer; user-select:none;
+  border:1px solid transparent;
+  transition: background .15s ease, color .15s ease;
+}
+.nav-item svg{ width:17px; height:17px; opacity:.85; flex-shrink:0; }
+.nav-item:hover{ background: rgba(255,255,255,0.06); color:#fff; }
+.nav-item.active{ background: rgba(255,255,255,0.12); color:#fff; border-color: rgba(255,255,255,0.08); }
+.nav-item .dot{
+  margin-left:auto; width:8px;height:8px;border-radius:50%; background: var(--accent-coral);
+  display:none;
+}
+.nav-item.has-alert .dot{ display:block; }
+
+.sidebar-foot{
+  margin-top:auto;
+  padding: 14px 12px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  font-size:11.5px; color:#8FB6AF;
+  display:flex; flex-direction:column; gap:3px;
+}
+
+/* ---------- main ---------- */
+.main{
+  flex:1;
+  min-width:0;
+  padding: 26px 34px 60px 34px;
+}
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:26px; gap:16px; flex-wrap:wrap;
+}
+.topbar h1{
+  font-family: var(--font-display);
+  font-size: 22px; font-weight:600; margin:0 0 3px 0; color: var(--brand-dark);
+  letter-spacing:-.2px;
+}
+.topbar p{ margin:0; color: var(--ink-soft); font-size:13px; }
+.topbar-right{ display:flex; align-items:center; gap:10px; }
+.today-chip{
+  font-family: var(--font-mono); font-size:12px; background:var(--bg-panel);
+  border:1px solid var(--line); padding:8px 13px; border-radius:10px; color:var(--ink-soft);
+  box-shadow: var(--shadow);
+}
+
+.view{ display:none; animation: fadeIn .25s ease; }
+.view.active{ display:block; }
+@keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+/* ---------- cards / grid ---------- */
+.grid{ display:grid; gap:16px; }
+.grid-kpi{ grid-template-columns: repeat(4, 1fr); margin-bottom:18px; }
+.grid-2{ grid-template-columns: 1.4fr 1fr; }
+.card{
+  background: var(--bg-panel); border:1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 20px;
+}
+.card h3{
+  font-family: var(--font-display); font-size:14.5px; font-weight:600; margin:0 0 14px 0; color:var(--brand-dark);
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+}
+.card h3 .sub{ font-family: var(--font-body); font-weight:500; font-size:11.5px; color:var(--ink-faint); }
+
+.kpi{
+  background: var(--bg-panel); border:1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 18px 20px; position:relative; overflow:hidden;
+}
+.kpi .label{ font-size:12px; color:var(--ink-soft); font-weight:500; margin-bottom:8px; }
+.kpi .value{ font-family: var(--font-display); font-size:28px; font-weight:700; color:var(--brand-dark); line-height:1; }
+.kpi .value small{ font-family:var(--font-body); font-size:13px; font-weight:600; color:var(--ink-faint); margin-left:3px;}
+.kpi .foot{ margin-top:8px; font-size:11.5px; color:var(--ink-faint); }
+.kpi .foot.alert{ color: var(--accent-coral); font-weight:600; }
+.kpi .foot.good{ color: var(--brand); font-weight:600; }
+.kpi .icon-badge{
+  position:absolute; top:16px; right:16px; width:34px; height:34px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center;
+}
+.kpi .icon-badge svg{ width:17px; height:17px; }
+
+/* ---------- table ---------- */
+table{ width:100%; border-collapse: collapse; font-size:13px; }
+th{
+  text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em;
+  color: var(--ink-faint); font-weight:600; padding: 9px 10px; border-bottom:1px solid var(--line);
+  white-space:nowrap;
+}
+td{ padding: 10px 10px; border-bottom:1px solid #EEF2F2; vertical-align:middle; }
+tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background: #FAFBFB; }
+.name-cell{ display:flex; align-items:center; gap:9px; }
+.avatar{
+  width:28px;height:28px;border-radius:50%; flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display); font-weight:600; font-size:11px; color:#fff;
+}
+.mono{ font-family: var(--font-mono); font-size:12.5px; }
+
+/* badges */
+.badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600;
+  padding: 4px 9px; border-radius:20px;
+}
+.badge.ok{ background: var(--brand-soft); color: var(--brand); }
+.badge.warn{ background: var(--accent-amber-soft); color:#8A5F09; }
+.badge.bad{ background: var(--accent-coral-soft); color: var(--accent-coral); }
+.badge.neutral{ background:#EEF1F1; color: var(--ink-soft); }
+.badge svg{ width:11px;height:11px; }
+
+/* pills for modalidad */
+.pill{ font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; border:1px solid var(--line); color:var(--ink-soft); background:#fff; }
+.pill.home{ background:#EFF4FB; color:var(--accent-blue); border-color:#D9E6F5; }
+.pill.central{ background:var(--brand-soft); color:var(--brand); border-color:#CFE7E2;}
+.pill.palomitas{ background:#F3EEFB; color:#6C4FA8; border-color:#E2D6F5;}
+.pill.mayo{ background:#FBEEEE; color:#B0483F; border-color:#F2D6D3;}
+.pill.other{ background:#F5F1E9; color:#8A6B1F; border-color:#EBE0C8;}
+.horario-select{ font-family:var(--font-mono); font-size:12.5px; padding:4px 8px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); }
+.conex-vertical th{ position:sticky; top:0; background:#F2F5F5; z-index:1; }
+.conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
+.conex-vertical input{ text-align:center; padding:5px 4px; }
+
+/* buttons / inputs */
+.btn{
+  font-family:var(--font-body); font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:9px;
+  border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; transition:.15s;
+}
+.btn:hover{ border-color: var(--brand); color:var(--brand); }
+.btn.primary{ background: var(--brand); border-color:var(--brand); color:#fff; }
+.btn.primary:hover{ background: var(--brand-dark); }
+select, input[type="date"], input[type="text"], input[type="number"]{
+  font-family: var(--font-body); font-size:12.5px; padding:7px 10px; border-radius:8px;
+  border:1px solid var(--line); background:#fff; color:var(--ink); outline:none;
+}
+select:focus, input:focus{ border-color: var(--brand); }
+
+.toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+.toolbar .spacer{ flex:1; }
+.seg{ display:flex; background:#EEF2F2; border-radius:9px; padding:3px; gap:2px;}
+.seg button{
+  border:none; background:transparent; font-size:12px; font-weight:600; color:var(--ink-soft);
+  padding:6px 12px; border-radius:7px; cursor:pointer; font-family:var(--font-body);
+}
+.seg button.active{ background:#fff; color:var(--brand-dark); box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+
+.empty{ text-align:center; padding:40px 20px; color:var(--ink-faint); font-size:13px; }
+
+.banner{
+  display:flex; align-items:center; gap:12px; padding:14px 18px; border-radius:12px; margin-bottom:20px;
+  background: var(--accent-coral-soft); border:1px solid #F2CCC2; color:#9A3B27; font-size:13px; font-weight:500;
+}
+.banner svg{ width:18px;height:18px; flex-shrink:0; }
+.banner b{ font-weight:700; }
+
+/* scrollable panel for conex timeline */
+.scroll-x{ overflow-x:auto; }
+
+/* editable inline */
+.editable{ cursor: text; border-bottom: 1px dashed transparent; }
+.editable:hover{ border-bottom-color: var(--brand); }
+
+/* footer note */
+.foot-note{ margin-top: 26px; font-size:11.5px; color:var(--ink-faint); text-align:center; }
+
+@media (max-width: 980px){
+  .grid-kpi{ grid-template-columns: repeat(2,1fr); }
+  .grid-2{ grid-template-columns: 1fr; }
+  .sidebar{ display:none; }
+  .main{ padding:18px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">AT</div>
+      <div class="brand-text">
+        <b>Torre de Control</b>
+        <span>Equipo Atención Telefónica</span>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav-item active" data-view="resumen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Resumen
+      </div>
+      <div class="nav-item" data-view="equipo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 21c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17.5" cy="8.5" r="2.5"/><path d="M15.5 12.2c2.6.2 4.7 2.3 5 5.3"/></svg>
+        Equipo
+      </div>
+      <div class="nav-item" data-view="colaborador">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Ficha de colaborador
+      </div>
+      <div class="nav-item" data-view="productividad">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V10M11 19V5M18 19v-7"/><path d="M2 19h20"/></svg>
+        Productividad
+      </div>
+      <div class="nav-item" data-view="conexion">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+        Conexión diaria
+      </div>
+      <div class="nav-item has-alert" data-view="monitoreos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
+        Monitoreos y devoluciones
+        <span class="dot"></span>
+      </div>
+    </nav>
+    <div class="sidebar-foot">
+      <span id="foot-date"></span>
+      <span>10 personas activas</span>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <!-- views injected by JS -->
+  </main>
+
+</div>
+
+<script id="team-data" type="application/json">
+{"roster": [{"name": "Valeria Barroso", "horario": "12 – 19", "modalidad": "Central"}, {"name": "Martin Bolívar", "horario": "12 – 19", "modalidad": "Central"}, {"name": "Camila Capaldi", "horario": "12 – 19", "modalidad": "Home"}, {"name": "Paula Fernandez", "horario": "8 – 15", "modalidad": "Central"}, {"name": "Natalia Machado", "horario": "8 – 15", "modalidad": "Central"}, {"name": "Nahuel Martinez", "horario": "8 – 15", "modalidad": "Home"}, {"name": "Florencia Muga", "horario": "9 – 16", "modalidad": "Palomitas"}, {"name": "Jonatan Murolo", "horario": "9 – 16", "modalidad": "Home"}, {"name": "Facundo Ravelo", "horario": "12 – 19", "modalidad": "Central"}, {"name": "Melisa Scattolini", "horario": "8 – 15", "modalidad": "1ro mayo"}], "prod_check": {"Valeria Barroso": {"ene": "ok", "feb": "ok", "mar": null, "abr": null, "may": null, "jun": null, "jul": null, "ago": null, "sep": null, "oct": null, "nov": null, "dic": null}, "Martin Bolívar": {"ene": "ok", "feb": "ok", "mar": null, "abr": null, "may": null, "jun": null, "jul": null, "ago": null, "sep": null, "oct": null, "nov": null, "dic": null}, "Camila Capaldi": {"ene": "ok", "feb": "ok", "mar": null, "abr": null, "may": null, "jun": null, "jul": null, "ago": null, "sep": null, "oct": null, "nov": null, "dic": null}, "Paula Fernandez": {"ene": "ok", "feb": "ok", "mar": null, "abr": null, "may": null, "jun": null, "jul": null, "ago": null, "sep": null, "oct": null, "nov": null, "dic": null}, "Natalia Machado": {"ene": "ok", "feb": "ok", "mar": null, "abr": null, "may": null, "jun": null, "jul": null, "ago": null, "sep": null, "oct": null, "nov": null, "dic": null}, "Nahuel Martinez": {"ene": "ok", "feb": "ok", "mar": null, "abr": null, "may": null, "jun": null, "jul": null, "ago": null, "sep": null, "oct": null, "nov": null, "dic": null}, "Florencia Muga": {"ene": "ok", "feb": "ok", "mar": null, "abr": null, "may": null, "jun": null, "jul": null, "ago": null, "sep": null, "oct": null, "nov": null, "dic": null}, "Jonatan Murolo": {"ene": "ok", "feb": "ok", "mar": null, "abr": null, "may": null, "jun": null, "jul": null, "ago": null, "sep": null, "oct": null, "nov": null, "dic": null}, "Facundo Ravelo": {"ene": "ok", "feb": "ok", "mar": null, "abr": null, "may": null, "jun": null, "jul": null, "ago": null, "sep": null, "oct": null, "nov": null, "dic": null}, "Melisa Scattolini": {"ene": "ok", "feb": "ok", "mar": null, "abr": null, "may": null, "jun": null, "jul": null, "ago": null, "sep": null, "oct": null, "nov": null, "dic": null}}, "devoluciones": {"Valeria Barroso": "2026-06-03", "Martin Bolívar": "2026-06-03", "Camila Capaldi": "2026-06-03", "Paula Fernandez": "2026-06-03", "Natalia Machado": "2026-06-03", "Nahuel Martinez": "2026-06-10", "Florencia Muga": "2026-06-03", "Jonatan Murolo": "2026-06-03", "Facundo Ravelo": "2026-06-10", "Melisa Scattolini": "2026-06-10"}, "monitoreos": {"Valeria Barroso": "2026-06-25", "Martin Bolívar": "2026-06-10", "Camila Capaldi": "2026-06-18", "Paula Fernandez": "2026-07-06", "Natalia Machado": "2026-06-10", "Nahuel Martinez": "2026-06-12", "Florencia Muga": "2026-07-06", "Jonatan Murolo": "2026-06-22", "Facundo Ravelo": "2026-06-12", "Melisa Scattolini": "2026-06-16"}, "monthly_metrics": {"ene": {"Valeria Barroso": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 20.0, "GDigital": 561, "Nota": null}, "Martin Bolívar": {"ATT": "03:41:00", "ACW": "02:06:00", "HOLD": "02:19:00", "TMO": "08:06:00", "Llamados": 680, "ActDatos": 86.49, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 66.67, "GDigital": 1201.0, "Nota": null}, "Paula Fernandez": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 0.0, "GDigital": 417.0, "Nota": null}, "Natalia Machado": {"ATT": "05:11:00", "ACW": "02:24:00", "HOLD": "01:59:00", "TMO": "09:34:00", "Llamados": 75, "ActDatos": 66.67, "GDigital": 426.0, "Nota": null}, "Nahuel Martinez": {"ATT": "03:26:00", "ACW": "04:19:00", "HOLD": "02:17:00", "TMO": "10:02:00", "Llamados": 566, "ActDatos": 34.78, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": "04:13:00", "ACW": "03:35:00", "HOLD": "03:16:00", "TMO": "11:04:00", "Llamados": 326, "ActDatos": 50.0, "GDigital": 220.0, "Nota": null}, "Jonatan Murolo": {"ATT": "03:37:00", "ACW": "03:50:00", "HOLD": "02:25:00", "TMO": "09:52:00", "Llamados": 255, "ActDatos": 17.95, "GDigital": 178.0, "Nota": null}, "Facundo Ravelo": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 0.0, "GDigital": 998.0, "Nota": "wsp"}, "Melisa Scattolini": {"ATT": "05:47:00", "ACW": "00:52:00", "HOLD": "02:47:00", "TMO": "09:26:00", "Llamados": 348, "ActDatos": 66.67, "GDigital": 27.0, "Nota": null}}, "feb": {"Valeria Barroso": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 15.71, "GDigital": 539, "Nota": null}, "Martin Bolívar": {"ATT": "04:03:00", "ACW": "02:28:00", "HOLD": "02:44:00", "TMO": "09:15:00", "Llamados": 570, "ActDatos": 73.33, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 0.0, "GDigital": 357, "Nota": null}, "Paula Fernandez": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 33.33, "GDigital": 396, "Nota": null}, "Natalia Machado": {"ATT": "05:17:00", "ACW": "02:19:00", "HOLD": "01:18:00", "TMO": "08:54:00", "Llamados": 89, "ActDatos": 57.14, "GDigital": 375, "Nota": null}, "Nahuel Martinez": {"ATT": "03:22:00", "ACW": "03:32:00", "HOLD": "02:16:00", "TMO": "09:10:00", "Llamados": 664, "ActDatos": 33.33, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": "04:20:00", "ACW": "03:42:00", "HOLD": "03:27:00", "TMO": "11:29:00", "Llamados": 109, "ActDatos": 36.36, "GDigital": 173, "Nota": null}, "Jonatan Murolo": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 13.04, "GDigital": 520, "Nota": "wsp"}, "Facundo Ravelo": {"ATT": "05:22:00", "ACW": "02:49:00", "HOLD": "03:33:00", "TMO": "11:44:00", "Llamados": 169, "ActDatos": 16.67, "GDigital": 779, "Nota": null}, "Melisa Scattolini": {"ATT": "05:59:00", "ACW": "01:02:00", "HOLD": "02:27:00", "TMO": "09:28:00", "Llamados": 638, "ActDatos": 64.1, "GDigital": 1, "Nota": null}}, "mar": {"Valeria Barroso": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 16.67, "GDigital": 401, "Nota": "wsp"}, "Martin Bolívar": {"ATT": "04:09:00", "ACW": "02:09:00", "HOLD": "02:39:00", "TMO": "08:57:00", "Llamados": 535, "ActDatos": 24.48, "GDigital": 25, "Nota": "mails"}, "Camila Capaldi": {"ATT": "05:26:00", "ACW": "02:23:00", "HOLD": "03:14:00", "TMO": "11:03:00", "Llamados": 269, "ActDatos": 62.5, "GDigital": 506, "Nota": "wsp/mails/solicitudes"}, "Paula Fernandez": {"ATT": "04:33:00", "ACW": "03:36:00", "HOLD": "04:19:00", "TMO": "12:28:00", "Llamados": 314, "ActDatos": 25.0, "GDigital": 284, "Nota": "wsp/mails"}, "Natalia Machado": {"ATT": "06:08:00", "ACW": "04:20:00", "HOLD": "02:48:00", "TMO": "13:16:00", "Llamados": 143, "ActDatos": 40.0, "GDigital": 130, "Nota": "mails"}, "Nahuel Martinez": {"ATT": "03:23:00", "ACW": "04:14:00", "HOLD": "02:59:00", "TMO": "10:36:00", "Llamados": 613, "ActDatos": 20.0, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": null, "GDigital": 917, "Nota": "wsp/mails"}, "Jonatan Murolo": {"ATT": "04:01:00", "ACW": "03:50:00", "HOLD": "02:56:00", "TMO": "10:47:00", "Llamados": 521, "ActDatos": 21.57, "GDigital": 81, "Nota": "wsp"}, "Facundo Ravelo": {"ATT": "05:17:00", "ACW": "03:37:00", "HOLD": "02:47:00", "TMO": "11:41:00", "Llamados": 246, "ActDatos": 20.0, "GDigital": 253, "Nota": "wsp/mails/solicitudes"}, "Melisa Scattolini": {"ATT": "05:51:00", "ACW": "00:58:00", "HOLD": "02:38:00", "TMO": "09:27:00", "Llamados": 571, "ActDatos": 64.1, "GDigital": 204, "Nota": "mails"}}, "abr": {"Valeria Barroso": {"ATT": "04:33:00", "ACW": "04:08:00", "HOLD": "03:58:00", "TMO": "12:39:00", "Llamados": 388, "ActDatos": 22.22, "GDigital": 32, "Nota": "wsp/mails"}, "Martin Bolívar": {"ATT": "04:47:00", "ACW": "02:39:00", "HOLD": "02:49:00", "TMO": "10:15:00", "Llamados": 278, "ActDatos": 85.0, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": "05:17:00", "ACW": "02:44:00", "HOLD": "03:46:00", "TMO": "11:47:00", "Llamados": 312, "ActDatos": 64.0, "GDigital": 494, "Nota": "sol/mail"}, "Paula Fernandez": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 13.89, "GDigital": 725, "Nota": "wsp/ mails"}, "Natalia Machado": {"ATT": "02:48:00", "ACW": "02:40:00", "HOLD": "02:53:00", "TMO": "08:21:00", "Llamados": 482, "ActDatos": 55.0, "GDigital": 165, "Nota": "wsp/mails/sol/telemed"}, "Nahuel Martinez": {"ATT": "03:12:00", "ACW": "03:40:00", "HOLD": "02:46:00", "TMO": "09:38:00", "Llamados": 432, "ActDatos": 47.06, "GDigital": 7, "Nota": "mails"}, "Florencia Muga": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": null, "GDigital": 1335, "Nota": "wsp/mails"}, "Jonatan Murolo": {"ATT": "03:44:00", "ACW": "03:37:00", "HOLD": "02:41:00", "TMO": "10:02:00", "Llamados": 703, "ActDatos": 35.0, "GDigital": 6, "Nota": "mails"}, "Facundo Ravelo": {"ATT": "04:35:00", "ACW": "04:06:00", "HOLD": "02:24:00", "TMO": "11:05:00", "Llamados": 302, "ActDatos": 17.14, "GDigital": 277, "Nota": "wsp/mails/sol"}, "Melisa Scattolini": {"ATT": "05:43:00", "ACW": "01:13:00", "HOLD": "02:23:00", "TMO": "09:19:00", "Llamados": 490, "ActDatos": 56.25, "GDigital": 261, "Nota": "mails"}}, "may": {"Valeria Barroso": {"ATT": "04:31:00", "ACW": "03:05:00", "HOLD": "03:35:00", "TMO": "11:11:00", "Llamados": 331, "ActDatos": 28.21, "GDigital": 64, "Nota": "wsp, mails, solis"}, "Martin Bolívar": {"ATT": "04:25:00", "ACW": "02:06:00", "HOLD": "02:41:00", "TMO": "09:12:00", "Llamados": 339, "ActDatos": 73.91, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": null, "GDigital": 956, "Nota": "solis, apoyo"}, "Paula Fernandez": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 15.24, "GDigital": 755, "Nota": "solis, wsp"}, "Natalia Machado": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": 7.69, "GDigital": 511, "Nota": "Mails, redes,wsp"}, "Nahuel Martinez": {"ATT": "03:23:00", "ACW": "03:45:00", "HOLD": "02:16:00", "TMO": "09:24:00", "Llamados": 519, "ActDatos": 7.14, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": null, "GDigital": 911, "Nota": "wsp"}, "Jonatan Murolo": {"ATT": "03:29:00", "ACW": "02:21:00", "HOLD": "02:15:00", "TMO": "08:05:00", "Llamados": 605, "ActDatos": 21.28, "GDigital": 7, "Nota": "brig"}, "Facundo Ravelo": {"ATT": "05:22:00", "ACW": "03:34:00", "HOLD": "02:39:00", "TMO": "11:35:00", "Llamados": 164, "ActDatos": 16.67, "GDigital": 388, "Nota": "apoyo"}, "Melisa Scattolini": {"ATT": "05:12:00", "ACW": "00:55:00", "HOLD": "02:20:00", "TMO": "08:27:00", "Llamados": 616, "ActDatos": 64.1, "GDigital": 27, "Nota": "brig"}}, "jun": {"Valeria Barroso": {"ATT": "04:44:00", "ACW": "03:21:00", "HOLD": "03:59:00", "TMO": "12:04:00", "Llamados": 247, "ActDatos": null, "GDigital": 136, "Nota": "wsp"}, "Martin Bolívar": {"ATT": "05:01:00", "ACW": "02:43:00", "HOLD": "03:33:00", "TMO": "11:17:00", "Llamados": 543, "ActDatos": null, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": null, "GDigital": 899, "Nota": "wsp, mails"}, "Paula Fernandez": {"ATT": "04:31:00", "ACW": "02:26:00", "HOLD": "03:22:00", "TMO": "10:19:00", "Llamados": 251, "ActDatos": null, "GDigital": 168, "Nota": "mails, wsp"}, "Natalia Machado": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": null, "GDigital": 572, "Nota": "wsp, mails"}, "Nahuel Martinez": {"ATT": "04:06:00", "ACW": "02:51:00", "HOLD": "02:24:00", "TMO": "09:21:00", "Llamados": 425, "ActDatos": null, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": "AD", "ACW": "AD", "HOLD": "AD", "TMO": "AD", "Llamados": "AD", "ActDatos": null, "GDigital": 623, "Nota": "mails, redes, wsp"}, "Jonatan Murolo": {"ATT": "03:20:00", "ACW": "02:51:00", "HOLD": "02:35:00", "TMO": "08:46:00", "Llamados": 605, "ActDatos": null, "GDigital": null, "Nota": null}, "Facundo Ravelo": {"ATT": "05:29:00", "ACW": "03:21:00", "HOLD": "03:07:00", "TMO": "11:57:00", "Llamados": 239, "ActDatos": null, "GDigital": 376, "Nota": "wsp, mails, solis"}, "Melisa Scattolini": {"ATT": "05:04:00", "ACW": "00:57:00", "HOLD": "02:10:00", "TMO": "08:11:00", "Llamados": 447, "ActDatos": null, "GDigital": 5, "Nota": null}}, "jul": {"Valeria Barroso": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Martin Bolívar": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Paula Fernandez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Natalia Machado": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Nahuel Martinez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Jonatan Murolo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Facundo Ravelo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Melisa Scattolini": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}}, "ago": {"Valeria Barroso": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Martin Bolívar": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Paula Fernandez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Natalia Machado": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Nahuel Martinez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Jonatan Murolo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Facundo Ravelo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Melisa Scattolini": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Act. Datos": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}}, "sep": {"Valeria Barroso": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Martin Bolívar": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Paula Fernandez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Natalia Machado": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Nahuel Martinez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Jonatan Murolo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Facundo Ravelo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Melisa Scattolini": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Act. Datos": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}}, "oct": {"Valeria Barroso": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Martin Bolívar": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Paula Fernandez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Natalia Machado": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Nahuel Martinez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Jonatan Murolo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Facundo Ravelo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Melisa Scattolini": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}}, "nov": {"Valeria Barroso": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Martin Bolívar": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Paula Fernandez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Natalia Machado": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Nahuel Martinez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Jonatan Murolo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Facundo Ravelo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Melisa Scattolini": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}}, "dic": {"Valeria Barroso": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Martin Bolívar": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Camila Capaldi": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Paula Fernandez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Natalia Machado": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Nahuel Martinez": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Florencia Muga": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Jonatan Murolo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Facundo Ravelo": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}, "Melisa Scattolini": {"ATT": null, "ACW": null, "HOLD": null, "TMO": null, "Llamados": null, "ActDatos": null, "GDigital": null, "Nota": null}}}, "conex": {"2026-01-05": {"Valeria Barroso": {"in": "07:00:00", "out": "14:00:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "14:00:00"}, "Camila Capaldi": {"in": "08:08:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "06:57:00", "out": "14:00:00"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "11:57:00", "out": "19:03:00"}, "Florencia Muga": {"in": "09:53:00", "out": "16:04:00"}, "Jonatan Murolo": {"in": "12:02:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "07:59:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "12:15:00", "out": "19:03:00"}}, "2026-01-06": {"Valeria Barroso": {"in": "07:05:00", "out": "14:02:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "06:59:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "07:00:00", "out": "13:00 G"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "12:00:00", "out": "19:02:00"}, "Florencia Muga": {"in": "08:59:00", "out": "16:22:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:03:00"}, "Melisa Scattolini": {"in": "11:55:00", "out": "19:19:00"}}, "2026-01-07": {"Valeria Barroso": {"in": "07:00:00", "out": "14:12:00"}, "Martin Bolívar": {"in": "06:58:00", "out": "14:00:00"}, "Camila Capaldi": {"in": "08:02:00", "out": "15:05:00"}, "Paula Fernandez": {"in": "06:58:00", "out": "13:00 G"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "11:57:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "07:58:00", "out": "15:03:00"}, "Melisa Scattolini": {"in": "11:56:00", "out": "19:02:00"}}, "2026-01-08": {"Valeria Barroso": {"in": "07:00:00", "out": "14:08:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "14:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:03:00"}, "Paula Fernandez": {"in": "06:59:00", "out": "13:05 G"}, "Natalia Machado": {"in": "08:25:00", "out": "14:00 G"}, "Nahuel Martinez": {"in": "11:56:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:02:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "15:13:00"}, "Facundo Ravelo": {"in": "07:59:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "11:55:00", "out": "19:02:00"}}, "2026-01-09": {"Valeria Barroso": {"in": "07:00:00", "out": "14:08:00"}, "Martin Bolívar": {"in": "06:58:00", "out": "14:06:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "06:58:00", "out": "13:04 G"}, "Natalia Machado": {"in": "07:58:00", "out": "14:00 G"}, "Nahuel Martinez": {"in": "Ausencia", "out": null}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "Pidio el dia", "out": null}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "08:04:00", "out": ""}}, "2026-01-12": {"Valeria Barroso": {"in": "07:00:00", "out": "14:00:00"}, "Martin Bolívar": {"in": "06:58:00", "out": "14:03:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "Licencia", "out": null}, "Natalia Machado": {"in": "08:00:00", "out": "15:01:00"}, "Nahuel Martinez": {"in": "11:59:00", "out": "19:06:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:04:00"}, "Jonatan Murolo": {"in": "Licencia", "out": null}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:02:00"}, "Melisa Scattolini": {"in": "11:55:00", "out": "19:03:00"}}, "2026-01-13": {"Valeria Barroso": {"in": "07:00:00", "out": "14:01:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "06:59:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:06:00"}, "Paula Fernandez": {"in": "Licencia", "out": null}, "Natalia Machado": {"in": "08:39 **", "out": "15:00:00"}, "Nahuel Martinez": {"in": "12:00:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:02:00"}, "Jonatan Murolo": {"in": "Licencia", "out": null}, "Facundo Ravelo": {"in": "07:59:00", "out": "15:04:00"}, "Melisa Scattolini": {"in": "12:55 G", "out": "19:02:00"}}, "2026-01-14": {"Valeria Barroso": {"in": "07:00:00", "out": "14:03:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "14:08:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "Licencia", "out": null}, "Natalia Machado": {"in": "08:00:00", "out": "15:01:00"}, "Nahuel Martinez": {"in": "12:00:00", "out": "19:02:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "Licencia", "out": null}, "Facundo Ravelo": {"in": "07:59:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "08:00 G", "out": "14:00:00"}}, "2026-01-15": {"Valeria Barroso": {"in": "07:00:00", "out": "14:00:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "14:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:06:00"}, "Paula Fernandez": {"in": "Licencia", "out": null}, "Natalia Machado": {"in": "11:59:00", "out": "19:04:00"}, "Nahuel Martinez": {"in": "11:42:00", "out": "19:02:00"}, "Florencia Muga": {"in": "Ausencia", "out": null}, "Jonatan Murolo": {"in": "Licencia", "out": null}, "Facundo Ravelo": {"in": "07:59:00", "out": "14:02 G"}, "Melisa Scattolini": {"in": "12:56 G", "out": "19:02:00"}}, "2026-01-16": {"Valeria Barroso": {"in": "07:00:00", "out": "14:00:00"}, "Martin Bolívar": {"in": "06:58:00", "out": "14:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:08:00"}, "Paula Fernandez": {"in": "Licencia", "out": null}, "Natalia Machado": {"in": "08:00:00", "out": "15:04:00"}, "Nahuel Martinez": {"in": "11:50:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:02:00"}, "Jonatan Murolo": {"in": "Licencia", "out": null}, "Facundo Ravelo": {"in": "08:00:00", "out": "14:01 G"}, "Melisa Scattolini": {"in": "12:55 G", "out": "19:10:00"}}, "2026-01-19": {"Valeria Barroso": {"in": "07:01:00", "out": "14:06:00"}, "Martin Bolívar": {"in": "06:58:00", "out": "14:07:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:02:00"}, "Paula Fernandez": {"in": "Licencia", "out": null}, "Natalia Machado": {"in": "07:58:00", "out": "15:01:00"}, "Nahuel Martinez": {"in": "11:51:00", "out": "19:03:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "11:58:00", "out": "19:03:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:04:00"}, "Melisa Scattolini": {"in": "Licencia", "out": null}}, "2026-01-20": {"Valeria Barroso": {"in": "07:00:00", "out": "14:14:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "13:06 G"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "Licencia", "out": null}, "Natalia Machado": {"in": "07:56:00", "out": "15:02:00"}, "Nahuel Martinez": {"in": "12:59 G", "out": "19:00:00"}, "Florencia Muga": {"in": "09:00:00", "out": "15:00 G"}, "Jonatan Murolo": {"in": "13:00 G", "out": "19:02:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "Licencia", "out": null}}, "2026-01-21": {"Valeria Barroso": {"in": "07:00:00", "out": "14:02:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "13:00 G"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "Licencia", "out": null}, "Natalia Machado": {"in": "07:59:00", "out": "15:01:00"}, "Nahuel Martinez": {"in": "13:00 G", "out": "19:08:00"}, "Florencia Muga": {"in": "09:00:00", "out": "15:00 G"}, "Jonatan Murolo": {"in": "12:58 G", "out": "19:03:00"}, "Facundo Ravelo": {"in": "07:59:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "Licencia", "out": null}}, "2026-01-22": {"Valeria Barroso": {"in": "07:00:00", "out": "14:00:00"}, "Martin Bolívar": {"in": "07:00:00", "out": "13:01 G"}, "Camila Capaldi": {"in": "08:01:00", "out": "13:17:00"}, "Paula Fernandez": {"in": "Licencia", "out": null}, "Natalia Machado": {"in": "07:59:00", "out": "15:00:00"}, "Nahuel Martinez": {"in": "13:00 G", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "15:02 G"}, "Jonatan Murolo": {"in": "12:58 G", "out": "19:02:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:04:00"}, "Melisa Scattolini": {"in": "Licencia", "out": null}}, "2026-01-23": {"Valeria Barroso": {"in": "12:00:00", "out": "19:03:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "13:03 G"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:04:00"}, "Paula Fernandez": {"in": "Licencia", "out": null}, "Natalia Machado": {"in": "07:59:00", "out": "15:04:00"}, "Nahuel Martinez": {"in": "13:00 G", "out": "19:03:00"}, "Florencia Muga": {"in": "09:00:00", "out": "15:00 G"}, "Jonatan Murolo": {"in": "12:57 G", "out": "19:03:00"}, "Facundo Ravelo": {"in": "07:59:00", "out": "15:03:00"}, "Melisa Scattolini": {"in": "Licencia", "out": null}}, "2026-01-26": {"Valeria Barroso": {"in": "07:03:00", "out": "14:05:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "14:08:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "07:00:00", "out": "14:01:00"}, "Natalia Machado": {"in": "07:58:00", "out": "15:01:00"}, "Nahuel Martinez": {"in": "12:00:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:02:00"}, "Jonatan Murolo": {"in": "11:58:00", "out": "19:03:00"}, "Facundo Ravelo": {"in": "07:59:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "Licencia", "out": null}}, "2026-01-27": {"Valeria Barroso": {"in": "07:00:00", "out": "14:06:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "14:00:00"}, "Camila Capaldi": {"in": "08:01:00", "out": "15:01:00"}, "Paula Fernandez": {"in": "07:00:00", "out": "14:03:00"}, "Natalia Machado": {"in": "07:59:00", "out": "15:03:00"}, "Nahuel Martinez": {"in": "11:52:00", "out": "19:02:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:03:00"}, "Jonatan Murolo": {"in": "11:58:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "Licencia", "out": null}}, "2026-01-28": {"Valeria Barroso": {"in": "07:00:00", "out": "14:15:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "14:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:02:00"}, "Paula Fernandez": {"in": "06:58:00", "out": "14:01:00"}, "Natalia Machado": {"in": "08:00:00", "out": "15:01:00"}, "Nahuel Martinez": {"in": "11:56:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "11:58:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "Licencia", "out": null}}, "2026-01-29": {"Valeria Barroso": {"in": "07:00:00", "out": "14:08:00"}, "Martin Bolívar": {"in": "06:59:00", "out": "14:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:02:00"}, "Paula Fernandez": {"in": "06:57:00", "out": "14:01:00"}, "Natalia Machado": {"in": "08:00:00", "out": "15:01:00"}, "Nahuel Martinez": {"in": "11:58:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:21:00"}, "Jonatan Murolo": {"in": "11:57:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "07:59:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "Licencia", "out": null}}, "2026-01-30": {"Valeria Barroso": {"in": "07:01:00", "out": "14:07:00"}, "Martin Bolívar": {"in": "07:00:00", "out": "14:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "11:35 FLX"}, "Paula Fernandez": {"in": "06:57:00", "out": "14:00:00"}, "Natalia Machado": {"in": "08:00:00", "out": "15:01:00"}, "Nahuel Martinez": {"in": "11:58:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:01:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:08:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "Licencia", "out": null}}, "2026-02-02": {"Valeria Barroso": {"in": "09:03:00", "out": "16:02:00"}, "Martin Bolívar": {"in": "08:59:00", "out": "16:00:00"}, "Camila Capaldi": {"in": "Licencia", "out": null}, "Paula Fernandez": {"in": "11:58:00", "out": "19:02:00"}, "Natalia Machado": {"in": "15:27 FLX", "out": "19:03:00"}, "Nahuel Martinez": {"in": "08:04:00", "out": "15:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "08:05:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "11:59:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "08:00:00", "out": "15:02:00"}}, "2026-02-03": {"Valeria Barroso": {"in": "09:00:00", "out": "16:07:00"}, "Martin Bolívar": {"in": "08:59:00", "out": "16:00:00"}, "Camila Capaldi": {"in": "Licencia", "out": null}, "Paula Fernandez": {"in": "12:00:00", "out": "19:04:00"}, "Natalia Machado": {"in": "12:58 G", "out": "19:04:00"}, "Nahuel Martinez": {"in": "07:59:00", "out": "15:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:04:00"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "11:58:00", "out": "19:04:00"}, "Melisa Scattolini": {"in": "08:00:00", "out": "15:03:00"}}, "2026-02-04": {"Valeria Barroso": {"in": "09:02:00", "out": "16:00:00"}, "Martin Bolívar": {"in": "08:59:00", "out": "16:00:00"}, "Camila Capaldi": {"in": "Licencia", "out": null}, "Paula Fernandez": {"in": "11:59:00", "out": "18:30 sistema"}, "Natalia Machado": {"in": "13:00 G", "out": "18:16 sistema"}, "Nahuel Martinez": {"in": "08:00:00", "out": "15:00:00"}, "Florencia Muga": {"in": "12:01:00", "out": "18:30 sistema"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "18:30 sistema"}, "Melisa Scattolini": {"in": "08:00:00", "out": "15:15:00"}}, "2026-02-05": {"Valeria Barroso": {"in": "09:00:00", "out": "16:00:00"}, "Martin Bolívar": {"in": "08:56:00", "out": "16:00:00"}, "Camila Capaldi": {"in": "Licencia", "out": null}, "Paula Fernandez": {"in": "11:59:00", "out": "19:02:00"}, "Natalia Machado": {"in": "12:55 G", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00:00", "out": "15:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:07:00"}, "Jonatan Murolo": {"in": "08:02:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "11:58:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:58:00", "out": "15:09:00"}}, "2026-02-06": {"Valeria Barroso": {"in": "08:59:00", "out": "16:01:00"}, "Martin Bolívar": {"in": "08:59:00", "out": "16:01:00"}, "Camila Capaldi": {"in": "Licencia", "out": null}, "Paula Fernandez": {"in": "11:59:00", "out": "19:02:00"}, "Natalia Machado": {"in": "12:55 G", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:01:00", "out": "15:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "11:59:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:59:00", "out": "15:00:00"}}, "2026-02-09": {"Valeria Barroso": {"in": "09:00:00", "out": "16:00:00"}, "Martin Bolívar": {"in": "08:59:00", "out": "16:03:00"}, "Camila Capaldi": {"in": "Licencia", "out": null}, "Paula Fernandez": {"in": "12:00:00", "out": "19:04:00"}, "Natalia Machado": {"in": "11:58:00", "out": "19:04:00"}, "Nahuel Martinez": {"in": "08:00:00", "out": "15:00:00"}, "Florencia Muga": {"in": "Licencia", "out": null}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:01:00"}, "Facundo Ravelo": {"in": "11:59:00", "out": "15:30 FLX"}, "Melisa Scattolini": {"in": "08:00:00", "out": "15:00:00"}}, "2026-02-10": {"Valeria Barroso": {"in": "09:00:00", "out": "15:06 G"}, "Martin Bolívar": {"in": "08:59:00", "out": "16:04:00"}, "Camila Capaldi": {"in": "Licencia", "out": null}, "Paula Fernandez": {"in": "12:58:00", "out": "19:03:00"}, "Natalia Machado": {"in": "Dia de cumpleaños", "out": null}, "Nahuel Martinez": {"in": "08:00:00", "out": "15:00:00"}, "Florencia Muga": {"in": "Licencia", "out": null}, "Jonatan Murolo": {"in": "07:59:00", "out": "15:01:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:03:00"}, "Melisa Scattolini": {"in": "07:59:00", "out": "14:00 G"}}, "2026-02-11": {"Valeria Barroso": {"in": "09:01:00", "out": "15:04 G"}, "Martin Bolívar": {"in": "08:59:00", "out": "16:08:00"}, "Camila Capaldi": {"in": "Licencia", "out": null}, "Paula Fernandez": {"in": "12:57:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:55:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:01:00", "out": "15:00:00"}, "Florencia Muga": {"in": "Licencia", "out": null}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:02:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:57:00", "out": "14:00 G"}}, "2026-02-12": {"Valeria Barroso": {"in": "09:00:00", "out": "15:03 G"}, "Martin Bolívar": {"in": "08:59:00", "out": "16:06:00"}, "Camila Capaldi": {"in": "Licencia", "out": null}, "Paula Fernandez": {"in": "12:53:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:57:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00:00", "out": "15:00:00"}, "Florencia Muga": {"in": "Licencia", "out": null}, "Jonatan Murolo": {"in": "07:59:00", "out": "15:07:00"}, "Facundo Ravelo": {"in": "11:59:00", "out": "19:03:00"}, "Melisa Scattolini": {"in": "13:00 G", "out": "19:03:00"}}, "2026-02-13": {"Valeria Barroso": {"in": "09:00:00", "out": "15:25:00"}, "Martin Bolívar": {"in": "09:00:00", "out": "16:11:00"}, "Camila Capaldi": {"in": "Licencia", "out": null}, "Paula Fernandez": {"in": "12:58:00", "out": "19:03:00"}, "Natalia Machado": {"in": "11:57:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:01:00", "out": "15:00:00"}, "Florencia Muga": {"in": "Licencia", "out": null}, "Jonatan Murolo": {"in": "08:02:00", "out": "15:01:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "08:01:00", "out": "14:04 G"}}, "2026-02-16": {"Valeria Barroso": {"in": "Feriado", "out": null}, "Martin Bolívar": {"in": "Feriado", "out": null}, "Camila Capaldi": {"in": "Feriado", "out": null}, "Paula Fernandez": {"in": "Feriado", "out": null}, "Natalia Machado": {"in": "Feriado", "out": null}, "Nahuel Martinez": {"in": "Feriado", "out": null}, "Florencia Muga": {"in": "Feriado", "out": null}, "Jonatan Murolo": {"in": "Feriado", "out": null}, "Facundo Ravelo": {"in": "Feriado", "out": null}, "Melisa Scattolini": {"in": "Feriado", "out": null}}, "2026-02-17": {"Valeria Barroso": {"in": "Feriado", "out": null}, "Martin Bolívar": {"in": "Feriado", "out": null}, "Camila Capaldi": {"in": "Feriado", "out": null}, "Paula Fernandez": {"in": "Feriado", "out": null}, "Natalia Machado": {"in": "Feriado", "out": null}, "Nahuel Martinez": {"in": "Feriado", "out": null}, "Florencia Muga": {"in": "Feriado", "out": null}, "Jonatan Murolo": {"in": "Feriado", "out": null}, "Facundo Ravelo": {"in": "Feriado", "out": null}, "Melisa Scattolini": {"in": "Feriado", "out": null}}, "2026-02-18": {"Valeria Barroso": {"in": "09:00:00", "out": "16:03:00"}, "Martin Bolívar": {"in": "09:00:00", "out": "16:03:00"}, "Camila Capaldi": {"in": "07:06:00", "out": "14:00:00"}, "Paula Fernandez": {"in": "11:58:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:57:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:03:00", "out": "14:00 G"}, "Florencia Muga": {"in": "Licencia", "out": null}, "Jonatan Murolo": {"in": "08:03:00", "out": "14:01 G"}, "Facundo Ravelo": {"in": "13:00  G", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:59:00", "out": "15:02:00"}}, "2026-02-19": {"Valeria Barroso": {"in": "09:00:00", "out": "16:01:00"}, "Martin Bolívar": {"in": "09:54 **", "out": "16:00:00"}, "Camila Capaldi": {"in": "06:58:00", "out": "14:01:00"}, "Paula Fernandez": {"in": "11:57:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:57:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00:00", "out": "14:00 G"}, "Florencia Muga": {"in": "Licencia", "out": null}, "Jonatan Murolo": {"in": "07:58:00", "out": "14:00 G"}, "Facundo Ravelo": {"in": "12:59  G", "out": "19:05:00"}, "Melisa Scattolini": {"in": "07:58:00", "out": "15:10:00"}}, "2026-02-20": {"Valeria Barroso": {"in": "09:00:00", "out": "16:01:00"}, "Martin Bolívar": {"in": "08:59:00", "out": "16:00:00"}, "Camila Capaldi": {"in": "06:59:00", "out": "14:00:00"}, "Paula Fernandez": {"in": "11:57:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:56:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00:00", "out": "14:00 G"}, "Florencia Muga": {"in": "Licencia", "out": null}, "Jonatan Murolo": {"in": "08:00:00", "out": "14:00 G"}, "Facundo Ravelo": {"in": "13:00  G", "out": "19:04:00"}, "Melisa Scattolini": {"in": "08:00:00", "out": "15:03:00"}}, "2026-02-23": {"Valeria Barroso": {"in": "09:00:00", "out": "16:01:00"}, "Martin Bolívar": {"in": "08:59:00", "out": "16:00:00"}, "Camila Capaldi": {"in": "07:00:00", "out": "14:01:00"}, "Paula Fernandez": {"in": "11:57:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:58:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00:00", "out": "15:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:11:00"}, "Jonatan Murolo": {"in": "08:01:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "12:01:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:59:00", "out": "15:01:00"}}, "2026-02-24": {"Valeria Barroso": {"in": "08:59:00", "out": "16:03:00"}, "Martin Bolívar": {"in": "08:59:00", "out": "15:04 G"}, "Camila Capaldi": {"in": "07:00:00", "out": "14:00:00"}, "Paula Fernandez": {"in": "11:55:00", "out": "19:03:00"}, "Natalia Machado": {"in": "", "out": null}, "Nahuel Martinez": {"in": "11:57:00", "out": "19:03:00"}, "Florencia Muga": {"in": "11:59:00", "out": "19:03:00"}, "Jonatan Murolo": {"in": "07:58:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "09:57:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "08:00:00", "out": "15:08:00"}}, "2026-02-25": {"Valeria Barroso": {"in": "09:00:00", "out": "16:07:00"}, "Martin Bolívar": {"in": "08:59:00", "out": "15:00 G"}, "Camila Capaldi": {"in": "", "out": null}, "Paula Fernandez": {"in": "11:56:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:57:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:02:00", "out": "15:01:00"}, "Florencia Muga": {"in": "11:59:00", "out": "19:03:00"}, "Jonatan Murolo": {"in": "08:01:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "11:59:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "08:00:00", "out": "15:19:00"}}, "2026-02-26": {"Valeria Barroso": {"in": "09:02:00", "out": "14:02:00"}, "Martin Bolívar": {"in": "09:00:00", "out": "15:07 G"}, "Camila Capaldi": {"in": "07:01:00", "out": "14:02:00"}, "Paula Fernandez": {"in": "11:53:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:57:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:04:00", "out": "15:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:04:00"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "11:59:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:59:00", "out": "15:01:00"}}, "2026-02-27": {"Valeria Barroso": {"in": "09:01:00", "out": "16:01:00"}, "Martin Bolívar": {"in": "08:59:00", "out": "15:00 G"}, "Camila Capaldi": {"in": "07:00:00", "out": "14:00:00"}, "Paula Fernandez": {"in": "11:57:00", "out": "19:02:00"}, "Natalia Machado": {"in": "12:03 **", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:01:00", "out": "15:00:00"}, "Florencia Muga": {"in": "12:04:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "07:57:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "11:58:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:59:00", "out": "15:09:00"}}, "2026-03-02": {"Valeria Barroso": {"in": "07:00:00", "out": "14:15:00"}, "Martin Bolívar": {"in": "11:59:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:07:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "07:57:00", "out": "15:00:00"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "08:05:00", "out": "19:02:00"}, "Florencia Muga": {"in": "08:00:00", "out": "15:01:00"}, "Jonatan Murolo": {"in": "11:59:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "09:04:00", "out": "16:01:00"}, "Melisa Scattolini": {"in": "11:59:00", "out": "19:02:00"}}, "2026-03-03": {"Valeria Barroso": {"in": "07:04:00", "out": "14:09:00"}, "Martin Bolívar": {"in": "11:59:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "13:00 G", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:01:00", "out": "15:02:00"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "07:59:00", "out": "19:03:00"}, "Florencia Muga": {"in": "08:03:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "09:00:00", "out": "16:00:00"}, "Melisa Scattolini": {"in": "11:55:00", "out": "19:08:00"}}, "2026-03-04": {"Valeria Barroso": {"in": "12:07:00", "out": "18:10:00"}, "Martin Bolívar": {"in": "12:00:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "13:00 G", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:00:00", "out": "15:00:00"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "08:00:00", "out": "19:02:00"}, "Florencia Muga": {"in": "08:00:00", "out": "15:01:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "09:00:00", "out": "16:04:00"}, "Melisa Scattolini": {"in": "11:59:00", "out": "19:03:00"}}, "2026-03-05": {"Valeria Barroso": {"in": "07:00:00", "out": "14:01:00"}, "Martin Bolívar": {"in": "11:58:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "13:00 G", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:01:00", "out": "15:02:00"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "07:59:00", "out": "19:02:00"}, "Florencia Muga": {"in": "08:00:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "08:59:00", "out": "16:02:00"}, "Melisa Scattolini": {"in": "07:59 – 16:13", "out": "12:08 – 19:02"}}, "2026-03-06": {"Valeria Barroso": {"in": "12:07:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:58:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "13:00 G", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:00:00", "out": "15:00:00"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "08:00 – 16:00", "out": "12:01 – 19:03"}, "Florencia Muga": {"in": "08:00:00", "out": "15:01:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "09:00:00", "out": "16:00:00"}, "Melisa Scattolini": {"in": "11:56:00", "out": "19:02:00"}}, "2026-03-09": {"Valeria Barroso": {"in": "07:01:00", "out": "14:02:00"}, "Martin Bolívar": {"in": "11:59:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:01:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:00:00", "out": "15:03:00"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "08:00 – 16:02", "out": "12:00 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "15:03:00"}, "Jonatan Murolo": {"in": "12:01:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "08:59:00", "out": "16:00:00"}, "Melisa Scattolini": {"in": "11:56:00", "out": "19:02:00"}}, "2026-03-10": {"Valeria Barroso": {"in": "06:59:00", "out": "14:12:00"}, "Martin Bolívar": {"in": "11:58:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:01:00", "out": "14:07 G"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "08:00 – 16:33 **", "out": "12:01 – 19:03"}, "Florencia Muga": {"in": "08:00:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "09:00:00", "out": "16:01:00"}, "Melisa Scattolini": {"in": "12:56 G", "out": "19:02:00"}}, "2026-03-11": {"Valeria Barroso": {"in": "06:59:00", "out": "14:13:00"}, "Martin Bolívar": {"in": "11:59:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:05:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:00:00", "out": "14:01 G"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "08:08 – 16:00", "out": "12:03 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "09:00:00", "out": "16:00:00"}, "Melisa Scattolini": {"in": "12:59 G", "out": "19:17:00"}}, "2026-03-12": {"Valeria Barroso": {"in": "07:00:00", "out": "14:02:00"}, "Martin Bolívar": {"in": "12:00:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:01:00", "out": "14:01 G"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "08:03 – 16:13", "out": "12:00 – 19:03"}, "Florencia Muga": {"in": "08:00:00", "out": "15:01:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "12:58 G", "out": "19:04:00"}}, "2026-03-13": {"Valeria Barroso": {"in": "07:00:00", "out": "13:35 FLX"}, "Martin Bolívar": {"in": "11:58:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:01:00", "out": "14:07 G"}, "Natalia Machado": {"in": "Licencia", "out": null}, "Nahuel Martinez": {"in": "08:00 – 16:00", "out": "12:00 -19:02"}, "Florencia Muga": {"in": "08:01:00", "out": "15:01:00"}, "Jonatan Murolo": {"in": "12:03:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "09:00:00", "out": "16:00:00"}, "Melisa Scattolini": {"in": "12:55 G", "out": "19:03:00"}}, "2026-03-16": {"Valeria Barroso": {"in": "06:58:00", "out": "14:02:00"}, "Martin Bolívar": {"in": "12:00:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:00:00", "out": "15:01:00"}, "Natalia Machado": {"in": "09:17***", "out": "16:00:00"}, "Nahuel Martinez": {"in": "07:59 – 16:03", "out": "12:00 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "15:01:00"}, "Jonatan Murolo": {"in": "Ausencia", "out": null}, "Facundo Ravelo": {"in": "09:00:00", "out": "16:00:00"}, "Melisa Scattolini": {"in": "11:57:00", "out": "19:02:00"}}, "2026-03-17": {"Valeria Barroso": {"in": "07:00:00", "out": "13:06 G"}, "Martin Bolívar": {"in": "11:59:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:01:00", "out": "15:15:00"}, "Natalia Machado": {"in": "08:59:00", "out": "16:01:00"}, "Nahuel Martinez": {"in": "Ausencia", "out": null}, "Florencia Muga": {"in": "08:00:00", "out": "14:00 G"}, "Jonatan Murolo": {"in": "Ausencia", "out": null}, "Facundo Ravelo": {"in": "09:02:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "11:54:00", "out": "19:02:00"}}, "2026-03-18": {"Valeria Barroso": {"in": "09:02:00", "out": "15:01 G"}, "Martin Bolívar": {"in": "11:59:00", "out": "19:13:00"}, "Camila Capaldi": {"in": "11:59:00", "out": "19:03:00"}, "Paula Fernandez": {"in": "08:00:00", "out": "15:15:00"}, "Natalia Machado": {"in": "08:59:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "08:02 – 15:59", "out": "12:00 -19:02"}, "Florencia Muga": {"in": "08:18**", "out": "14:00 G"}, "Jonatan Murolo": {"in": "Ausencia", "out": null}, "Facundo Ravelo": {"in": "08:59:00", "out": "15:00 G"}, "Melisa Scattolini": {"in": "11:56:00", "out": "19:02:00"}}, "2026-03-19": {"Valeria Barroso": {"in": "13:03 G", "out": "19:08:00"}, "Martin Bolívar": {"in": "11:59:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:01:00", "out": "15:00:00"}, "Natalia Machado": {"in": "09:00:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "08:00 – 16:00", "out": "12:00 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "14:00 G"}, "Jonatan Murolo": {"in": "13:00 G", "out": "19:02:00"}, "Facundo Ravelo": {"in": "13:00  G", "out": "19:02:00"}, "Melisa Scattolini": {"in": "11:55:00", "out": "19:02:00"}}, "2026-03-20": {"Valeria Barroso": {"in": "08:01:00", "out": "18:04 G"}, "Martin Bolívar": {"in": "11:59:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:01:00", "out": "15:02:00"}, "Natalia Machado": {"in": "08:59:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "07:59 – 16:01", "out": "12:01 – 19:02"}, "Florencia Muga": {"in": "08:05:00", "out": "14:01 G"}, "Jonatan Murolo": {"in": "14:01:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "09:00:00", "out": "15:01 G"}, "Melisa Scattolini": {"in": "11:55:00", "out": "19:02:00"}}, "2026-03-23": {"Valeria Barroso": {"in": "Feriado", "out": null}, "Martin Bolívar": {"in": "Feriado", "out": null}, "Camila Capaldi": {"in": "Feriado", "out": null}, "Paula Fernandez": {"in": "Feriado", "out": null}, "Natalia Machado": {"in": "Feriado", "out": null}, "Nahuel Martinez": {"in": "Feriado", "out": null}, "Florencia Muga": {"in": "Feriado", "out": null}, "Jonatan Murolo": {"in": "Feriado", "out": null}, "Facundo Ravelo": {"in": "Feriado", "out": null}, "Melisa Scattolini": {"in": "Feriado", "out": null}}, "2026-03-24": {"Valeria Barroso": {"in": "Feriado", "out": null}, "Martin Bolívar": {"in": "Feriado", "out": null}, "Camila Capaldi": {"in": "Feriado", "out": null}, "Paula Fernandez": {"in": "Feriado", "out": null}, "Natalia Machado": {"in": "Feriado", "out": null}, "Nahuel Martinez": {"in": "Feriado", "out": null}, "Florencia Muga": {"in": "Feriado", "out": null}, "Jonatan Murolo": {"in": "Feriado", "out": null}, "Facundo Ravelo": {"in": "Feriado", "out": null}, "Melisa Scattolini": {"in": "Feriado", "out": null}}, "2026-03-25": {"Valeria Barroso": {"in": "07:00:00", "out": "14:02:00"}, "Martin Bolívar": {"in": "13:00 G", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:01:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:01:00", "out": "15:00:00"}, "Natalia Machado": {"in": "08:59:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "08:00 – 16:04", "out": "12:02 – 18:01G"}, "Florencia Muga": {"in": "08:00:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "Licencia", "out": null}, "Melisa Scattolini": {"in": "11:55:00", "out": "19:02:00"}}, "2026-03-26": {"Valeria Barroso": {"in": "07:00:00", "out": "14:08:00"}, "Martin Bolívar": {"in": "12:59 G", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:00:00", "out": "15:00:00"}, "Natalia Machado": {"in": "08:59:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "08:00 – 16:00", "out": "12:01 – 18:01G"}, "Florencia Muga": {"in": "08:00:00", "out": "15:01:00"}, "Jonatan Murolo": {"in": "12:01:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "Licencia", "out": null}, "Melisa Scattolini": {"in": "11:56:00", "out": "19:02:00"}}, "2026-03-27": {"Valeria Barroso": {"in": "07:00:00", "out": "14:09:00"}, "Martin Bolívar": {"in": "12:58 G", "out": "19:02:00"}, "Camila Capaldi": {"in": "Dia Off", "out": null}, "Paula Fernandez": {"in": "08:00:00", "out": "15:00:00"}, "Natalia Machado": {"in": "08:58:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "08:00 – 15:59", "out": "12:00 – 18:00G"}, "Florencia Muga": {"in": "08:00:00", "out": "15:02:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:03:00"}, "Facundo Ravelo": {"in": "Licencia", "out": null}, "Melisa Scattolini": {"in": "11:55:00", "out": "19:09:00"}}, "2026-03-30": {"Valeria Barroso": {"in": "07:00:00", "out": "13:06 G"}, "Martin Bolívar": {"in": "11:59:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "13:00 G", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:00:00", "out": "15:01:00"}, "Natalia Machado": {"in": "08:58:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "08:00:00", "out": "15:03:00"}, "Jonatan Murolo": {"in": "12:01:00", "out": "19:08:00"}, "Facundo Ravelo": {"in": "Licencia", "out": null}, "Melisa Scattolini": {"in": "11:55:00", "out": "19:03:00"}}, "2026-03-31": {"Valeria Barroso": {"in": "13:03 G", "out": "19:12:00"}, "Martin Bolívar": {"in": "11:59:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "13:00 G", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:00:00", "out": "15:00:00"}, "Natalia Machado": {"in": "08:58:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "08:01:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "11:59:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "Licencia", "out": null}, "Melisa Scattolini": {"in": "11:55:00", "out": "19:15:00"}}, "2026-04-01": {"Valeria Barroso": {"in": "13:00 G", "out": "19:13:00"}, "Martin Bolívar": {"in": "11:58:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:59 G", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:00:00", "out": "14:00 G***"}, "Natalia Machado": {"in": "08:59:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "08:00:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "Licencia", "out": null}, "Melisa Scattolini": {"in": "11:56:00", "out": "19:02:00"}}, "2026-04-02": {"Valeria Barroso": {"in": "Feriado", "out": null}, "Martin Bolívar": {"in": "Feriado", "out": null}, "Camila Capaldi": {"in": "Feriado", "out": null}, "Paula Fernandez": {"in": "Feriado", "out": null}, "Natalia Machado": {"in": "Feriado", "out": null}, "Nahuel Martinez": {"in": "Feriado", "out": null}, "Florencia Muga": {"in": "Feriado", "out": null}, "Jonatan Murolo": {"in": "Feriado", "out": null}, "Facundo Ravelo": {"in": "Feriado", "out": null}, "Melisa Scattolini": {"in": "Feriado", "out": null}}, "2026-04-03": {"Valeria Barroso": {"in": "Feriado", "out": null}, "Martin Bolívar": {"in": "Feriado", "out": null}, "Camila Capaldi": {"in": "Feriado", "out": null}, "Paula Fernandez": {"in": "Feriado", "out": null}, "Natalia Machado": {"in": "Feriado", "out": null}, "Nahuel Martinez": {"in": "Feriado", "out": null}, "Florencia Muga": {"in": "Feriado", "out": null}, "Jonatan Murolo": {"in": "Feriado", "out": null}, "Facundo Ravelo": {"in": "Feriado", "out": null}, "Melisa Scattolini": {"in": "Feriado", "out": null}}, "2026-04-06": {"Valeria Barroso": {"in": "07:59:00", "out": "15:21:00"}, "Martin Bolívar": {"in": "Licencia", "out": null}, "Camila Capaldi": {"in": "09:08:00", "out": "16:01:00"}, "Paula Fernandez": {"in": "11:02***", "out": "19:02:00"}, "Natalia Machado": {"in": "08:00 – 16:00", "out": "12:00 – 19:02"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "09:00:00", "out": "16:00:00"}, "Facundo Ravelo": {"in": "08:07:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "09:00:00", "out": "16:04:00"}}, "2026-04-07": {"Valeria Barroso": {"in": "15:00:00", "out": "15:00:00"}, "Martin Bolívar": {"in": "Licencia", "out": null}, "Camila Capaldi": {"in": "09:00:00", "out": "16:01:00"}, "Paula Fernandez": {"in": "11:58:00", "out": "19:02:00"}, "Natalia Machado": {"in": "07:59 – 15:59", "out": "12:05 – 19:02"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "09:01:00", "out": "16:05:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "08:58:00", "out": "15:11:00"}}, "2026-04-08": {"Valeria Barroso": {"in": "08:00:00", "out": "15:03:00"}, "Martin Bolívar": {"in": "Licencia", "out": null}, "Camila Capaldi": {"in": "09:00:00", "out": "16:00:00"}, "Paula Fernandez": {"in": "11:56:00", "out": "19:02:00"}, "Natalia Machado": {"in": "08:00 – 15:59", "out": "12:20 – 19:09"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "09:00:00", "out": "16:01:00"}, "Jonatan Murolo": {"in": "09:01:00", "out": "15:59:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "08:57:00", "out": "15:00 G"}}, "2026-04-09": {"Valeria Barroso": {"in": "08:00:00", "out": "15:00:00"}, "Martin Bolívar": {"in": "Licencia", "out": null}, "Camila Capaldi": {"in": "09:00:00", "out": "16:01:00"}, "Paula Fernandez": {"in": "11:57:00", "out": "19:02:00"}, "Natalia Machado": {"in": "08:00 – 16:00", "out": "12:00 – 19:02"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "12:00:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "09:00:00", "out": "16:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "08:59:00", "out": "15:08 G"}}, "2026-04-10": {"Valeria Barroso": {"in": "08:00:00", "out": "15:06:00"}, "Martin Bolívar": {"in": "Licencia", "out": null}, "Camila Capaldi": {"in": "09:00:00", "out": "16:03:00"}, "Paula Fernandez": {"in": "11:54:00", "out": "19:02:00"}, "Natalia Machado": {"in": "07:59 – 15:59", "out": "12:10 – 19:02"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "09:02:00", "out": "16:07:00"}, "Facundo Ravelo": {"in": "Ausencia", "out": null}, "Melisa Scattolini": {"in": "08:57:00", "out": "15:14 G"}}, "2026-04-13": {"Valeria Barroso": {"in": "08:00:00", "out": "15:03:00"}, "Martin Bolívar": {"in": "Licencia", "out": null}, "Camila Capaldi": {"in": "09:00:00", "out": "16:00:00"}, "Paula Fernandez": {"in": "12:00:00", "out": "19:02:00"}, "Natalia Machado": {"in": "07:59 – 16:00", "out": "12:00 – 19:02"}, "Nahuel Martinez": {"in": "08:59:00", "out": "16:00:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:01:00"}, "Jonatan Murolo": {"in": "09:00:00", "out": "16:03:00"}, "Facundo Ravelo": {"in": "09:00:00", "out": "16:03:00"}, "Melisa Scattolini": {"in": "08:58:00", "out": "16:01:00"}}, "2026-04-14": {"Valeria Barroso": {"in": "08:00:00", "out": "15:16:00"}, "Martin Bolívar": {"in": "Licencia", "out": null}, "Camila Capaldi": {"in": "09:00:00", "out": "16:01:00"}, "Paula Fernandez": {"in": "12:57 G", "out": "19:02:00"}, "Natalia Machado": {"in": "08:00 – 16:00", "out": "12:00 – 18:00G"}, "Nahuel Martinez": {"in": "13:00 G", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "09:02:00", "out": "15:00 G"}, "Facundo Ravelo": {"in": "08:00:00", "out": "14:00 G"}, "Melisa Scattolini": {"in": "08:58:00", "out": "16:00:00"}}, "2026-04-15": {"Valeria Barroso": {"in": "08:01:00", "out": "15:04:00"}, "Martin Bolívar": {"in": "Licencia", "out": null}, "Camila Capaldi": {"in": "09:00:00", "out": "16:00:00"}, "Paula Fernandez": {"in": "Ausencia", "out": null}, "Natalia Machado": {"in": "07:59 – 16:00", "out": "12:00 – 18:00G"}, "Nahuel Martinez": {"in": "13:01 G", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:01:00"}, "Jonatan Murolo": {"in": "09:00:00", "out": "15:05 G"}, "Facundo Ravelo": {"in": "08:00:00", "out": "14:00 G"}, "Melisa Scattolini": {"in": "09:00:00", "out": "16:00:00"}}, "2026-04-16": {"Valeria Barroso": {"in": "08:00:00", "out": "15:07:00"}, "Martin Bolívar": {"in": "Licencia", "out": null}, "Camila Capaldi": {"in": "09:01:00", "out": "16:08:00"}, "Paula Fernandez": {"in": "Ausencia", "out": null}, "Natalia Machado": {"in": "08:00 – 16:01", "out": "12:00 – 18:00G"}, "Nahuel Martinez": {"in": "13:01 G", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "09:01:00", "out": "15:02 G"}, "Facundo Ravelo": {"in": "08:00:00", "out": "14:00 G"}, "Melisa Scattolini": {"in": "08:59:00", "out": "16:01:00"}}, "2026-04-17": {"Valeria Barroso": {"in": "08:00:00", "out": "15:06:00"}, "Martin Bolívar": {"in": "Licencia", "out": null}, "Camila Capaldi": {"in": "09:00:00", "out": "16:00:00"}, "Paula Fernandez": {"in": "13:00 G", "out": "19:02:00"}, "Natalia Machado": {"in": "07:59 – 15:59", "out": "12:00 – 18:00G"}, "Nahuel Martinez": {"in": "13:02 G", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "09:01:00", "out": "15:00 G"}, "Facundo Ravelo": {"in": "08:00:00", "out": "14:00 G"}, "Melisa Scattolini": {"in": "08:59:00", "out": "16:09:00"}}, "2026-04-20": {"Valeria Barroso": {"in": "08:01:00", "out": "15:12:00"}, "Martin Bolívar": {"in": "11:57:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "09:00:00", "out": "16:01:00"}, "Paula Fernandez": {"in": "11:58:00", "out": "19:02:00"}, "Natalia Machado": {"in": "08:00 – 15:59", "out": "12:01 – 19:05"}, "Nahuel Martinez": {"in": "12:10:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:01:00"}, "Jonatan Murolo": {"in": "09:02:00", "out": "16:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "08:59:00", "out": "16:13:00"}}, "2026-04-21": {"Valeria Barroso": {"in": "08:00:00", "out": "15:03:00"}, "Martin Bolívar": {"in": "12:59 G", "out": "19:02:00"}, "Camila Capaldi": {"in": "09:00:00", "out": "16:01:00"}, "Paula Fernandez": {"in": "11:57:00", "out": "19:02:00"}, "Natalia Machado": {"in": "08:00 – 15:59", "out": "12:08 – 19:02"}, "Nahuel Martinez": {"in": "12:02:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:01:00"}, "Jonatan Murolo": {"in": "08:59:00", "out": "16:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "08:59:00", "out": "16:02:00"}}, "2026-04-22": {"Valeria Barroso": {"in": "08:01:00", "out": "15:00:00"}, "Martin Bolívar": {"in": "12:59 G", "out": "19:02:00"}, "Camila Capaldi": {"in": "09:00:00", "out": "16:02:00"}, "Paula Fernandez": {"in": "11:58:00", "out": "19:02:00"}, "Natalia Machado": {"in": "07:59 – 15:59", "out": "12:06 – 19:05"}, "Nahuel Martinez": {"in": "12:03:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:01:00"}, "Jonatan Murolo": {"in": "09:00:00", "out": "16:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "08:59:00", "out": "16:06:00"}}, "2026-04-23": {"Valeria Barroso": {"in": "08:00:00", "out": "15:04:00"}, "Martin Bolívar": {"in": "12:59 G", "out": "19:02:00"}, "Camila Capaldi": {"in": "09:00:00", "out": "16:00:00"}, "Paula Fernandez": {"in": "12:00:00", "out": "19:02:00"}, "Natalia Machado": {"in": "07:59 – 15:59", "out": "12:01 – 19:04"}, "Nahuel Martinez": {"in": "11:59:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "15:00 G"}, "Jonatan Murolo": {"in": "09:00:00", "out": "16:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "09:00:00", "out": "16:01:00"}}, "2026-04-24": {"Valeria Barroso": {"in": "08:03:00", "out": "15:03:00"}, "Martin Bolívar": {"in": "12:59 G", "out": "19:02:00"}, "Camila Capaldi": {"in": "09:02:00", "out": "16:00:00"}, "Paula Fernandez": {"in": "11:59:00", "out": "19:02:00"}, "Natalia Machado": {"in": "07:59 – 15:59", "out": "12:00 – 19:02"}, "Nahuel Martinez": {"in": "11:59:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "15:00 G"}, "Jonatan Murolo": {"in": "09:00:00", "out": "16:03:00"}, "Facundo Ravelo": {"in": "08:01:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "09:00:00", "out": "16:05:00"}}, "2026-04-27": {"Valeria Barroso": {"in": "Licencia", "out": null}, "Martin Bolívar": {"in": "11:58:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "09:00:00", "out": "15:00 G"}, "Paula Fernandez": {"in": "12:00:00", "out": "19:02:00"}, "Natalia Machado": {"in": "07:59 – 15:58", "out": "12:02 – 19:02"}, "Nahuel Martinez": {"in": "11:59:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:02:00"}, "Jonatan Murolo": {"in": "09:00:00", "out": "16:04:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "09:00:00", "out": "16:06:00"}}, "2026-04-28": {"Valeria Barroso": {"in": "Licencia", "out": null}, "Martin Bolívar": {"in": "11:59:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "09:01:00", "out": "15:05 G"}, "Paula Fernandez": {"in": "11:59:00", "out": "19:02:00"}, "Natalia Machado": {"in": "07:59 – 15:59", "out": "12:00 – 19:02"}, "Nahuel Martinez": {"in": "11:59:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:01:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "09:00:00", "out": "16:00:00"}, "Facundo Ravelo": {"in": "08:01:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "08:58:00", "out": "16:00:00"}}, "2026-04-29": {"Valeria Barroso": {"in": "Licencia", "out": null}, "Martin Bolívar": {"in": "11:57:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "09:00:00", "out": "15:00 G"}, "Paula Fernandez": {"in": "11:54:00", "out": "19:02:00"}, "Natalia Machado": {"in": "08:00 – 15:59", "out": "12:00 – 19:02"}, "Nahuel Martinez": {"in": "12:02:00", "out": "19:03:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:00:00"}, "Jonatan Murolo": {"in": "09:00:00", "out": "16:01:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "08:58:00", "out": "16:05:00"}}, "2026-04-30": {"Valeria Barroso": {"in": "Licencia", "out": null}, "Martin Bolívar": {"in": "11:58:00", "out": "19:07:00"}, "Camila Capaldi": {"in": "09:00:00", "out": "15:00 G"}, "Paula Fernandez": {"in": "11:58:00", "out": "12:03:00"}, "Natalia Machado": {"in": "07:59 – 15:59", "out": "12:00 – 19:03"}, "Nahuel Martinez": {"in": "11:57:00", "out": "19:02:00"}, "Florencia Muga": {"in": "09:00:00", "out": "16:01:00"}, "Jonatan Murolo": {"in": "09:00:00", "out": "16:06:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "09:00:00", "out": "16:06:00"}}, "2026-05-01": {"Valeria Barroso": {"in": "Feriado", "out": null}, "Martin Bolívar": {"in": "Feriado", "out": null}, "Camila Capaldi": {"in": "Feriado", "out": null}, "Paula Fernandez": {"in": "Feriado", "out": null}, "Natalia Machado": {"in": "Feriado", "out": null}, "Nahuel Martinez": {"in": "Feriado", "out": null}, "Florencia Muga": {"in": "Feriado", "out": null}, "Jonatan Murolo": {"in": "Feriado", "out": null}, "Facundo Ravelo": {"in": "Feriado", "out": null}, "Melisa Scattolini": {"in": "Feriado", "out": null}}, "2026-05-04": {"Valeria Barroso": {"in": "12:00:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:58:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:58:00", "out": "16:00:00"}, "Natalia Machado": {"in": "07:00:00", "out": "14:00:00"}, "Nahuel Martinez": {"in": "09:13:00", "out": "16:00:00"}, "Florencia Muga": {"in": "12:01:00", "out": "19:07:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "11:58:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:58 – 15:59", "out": "12:06 – 19:02"}}, "2026-05-05": {"Valeria Barroso": {"in": "12:00:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:52:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:57:00", "out": "15:00 G"}, "Natalia Machado": {"in": "06:59:00", "out": "13:01G"}, "Nahuel Martinez": {"in": "09:26:00", "out": "16:00:00"}, "Florencia Muga": {"in": "11:57:00", "out": "19:06:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:58 – 15:58", "out": "12:02 – 19:02"}}, "2026-05-06": {"Valeria Barroso": {"in": "12:04:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:54:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "08:02:00", "out": "15:02:00"}, "Paula Fernandez": {"in": "08:59:00", "out": "15:01 G"}, "Natalia Machado": {"in": "07:00:00", "out": "13:00G"}, "Nahuel Martinez": {"in": "09:00:00", "out": "16:00:00"}, "Florencia Muga": {"in": "11:58:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:03:00"}, "Melisa Scattolini": {"in": "07:59 – 15:59", "out": "12:04 – 19:03"}}, "2026-05-07": {"Valeria Barroso": {"in": "12:01:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:55:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:01:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:54:00", "out": "15:00 G"}, "Natalia Machado": {"in": "07:00:00", "out": "13:00G"}, "Nahuel Martinez": {"in": "09:02:00", "out": "16:01:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:07:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "11:58:00", "out": "19:03:00"}, "Melisa Scattolini": {"in": "07:59 – 15:59", "out": "12:01 – 19:03"}}, "2026-05-08": {"Valeria Barroso": {"in": "12:00:00", "out": "19:03:00"}, "Martin Bolívar": {"in": "11:56:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:55:00", "out": "15:00 G"}, "Natalia Machado": {"in": "07:00:00", "out": "13:01G"}, "Nahuel Martinez": {"in": "09:00:00", "out": "16:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "11:57:00", "out": "19:03:00"}, "Melisa Scattolini": {"in": "07:59 – 15:58", "out": "12:02 – 19:05"}}, "2026-05-11": {"Valeria Barroso": {"in": "12:06:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:53:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:58:00", "out": "16:00:00"}, "Natalia Machado": {"in": "06:59:00", "out": "14:00:00"}, "Nahuel Martinez": {"in": "09:00:00", "out": "16:00:00"}, "Florencia Muga": {"in": "11:56:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "12:01:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "11:57:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "08:00 – 15:56", "out": "12:01 – 19:03"}}, "2026-05-12": {"Valeria Barroso": {"in": "13:00 G", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:55:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:06:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:59:00", "out": "16:00:00"}, "Natalia Machado": {"in": "07:00:00", "out": "14:00:00"}, "Nahuel Martinez": {"in": "09:01:00", "out": "16:00:00"}, "Florencia Muga": {"in": "12:04:00", "out": "19:08:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "11:59:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "08:00 – 15:59", "out": "12:04 – 19:02"}}, "2026-05-13": {"Valeria Barroso": {"in": "13:01 G", "out": "19:03:00"}, "Martin Bolívar": {"in": "11:53:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:08:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:58:00", "out": "16:00:00"}, "Natalia Machado": {"in": "06:58:00", "out": "14:08:00"}, "Nahuel Martinez": {"in": "09:00:00", "out": "16:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "12:01:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "11:57:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:58 – 16:00", "out": "12:00 – 19:02"}}, "2026-05-14": {"Valeria Barroso": {"in": "13:00 G", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:57:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "09:00:00", "out": "16:00:00"}, "Natalia Machado": {"in": "07:00:00", "out": "14:00:00"}, "Nahuel Martinez": {"in": "09:01:00", "out": "16:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:59 – 15:58", "out": "12:05 – 19:02"}}, "2026-05-15": {"Valeria Barroso": {"in": "13:00 G", "out": "19:02:00"}, "Martin Bolívar": {"in": "15:21 FL", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:58:00", "out": "16:00:00"}, "Natalia Machado": {"in": "06:59:00", "out": "10:30 FL"}, "Nahuel Martinez": {"in": "09:01:00", "out": "16:00:00"}, "Florencia Muga": {"in": "12:01:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "07:00:00", "out": "14:01:00"}, "Melisa Scattolini": {"in": "07:58 – 15:59", "out": "12:00 – 19:02"}}, "2026-05-18": {"Valeria Barroso": {"in": "12:00:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:53:00", "out": "19:04:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:59:00", "out": "16:00:00"}, "Natalia Machado": {"in": "07:00:00", "out": "14:00:00"}, "Nahuel Martinez": {"in": "08:59:00", "out": "16:00:00"}, "Florencia Muga": {"in": "11:56:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:59 – 15:58", "out": "12:05 – 19:02"}}, "2026-05-19": {"Valeria Barroso": {"in": "12:01:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:47:00", "out": "18:00 G"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:55:00", "out": "16:00:00"}, "Natalia Machado": {"in": "06:59:00", "out": "14:00:00"}, "Nahuel Martinez": {"in": "09:00:00", "out": "15:00 G"}, "Florencia Muga": {"in": "13:00 G", "out": "19:09:00"}, "Jonatan Murolo": {"in": "12:59 G", "out": "19:02:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:58 – 15:58", "out": "12:13 – 18:02 G"}}, "2026-05-20": {"Valeria Barroso": {"in": "11:58:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:52:00", "out": "18:00 G"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:58:00", "out": "16:00:00"}, "Natalia Machado": {"in": "07:00:00", "out": "14:01:00"}, "Nahuel Martinez": {"in": "09:03:00", "out": "15:00 G"}, "Florencia Muga": {"in": "13:00 G", "out": "19:07:00"}, "Jonatan Murolo": {"in": "13:00 G", "out": "19:02:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:59 – 15:58", "out": "12:04 – 18:02 G"}}, "2026-05-21": {"Valeria Barroso": {"in": "12:00:00", "out": "19:04:00"}, "Martin Bolívar": {"in": "11:51:00", "out": "18:00 G"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:56:00", "out": "16:00:00"}, "Natalia Machado": {"in": "07:00:00", "out": "14:00:00"}, "Nahuel Martinez": {"in": "09:00:00", "out": "15:00 G"}, "Florencia Muga": {"in": "13:00 G", "out": "19:07:00"}, "Jonatan Murolo": {"in": "13:00 G", "out": "19:02:00"}, "Facundo Ravelo": {"in": "12:00:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:59 – 15:59", "out": "12:08 – 18:02 G"}}, "2026-05-22": {"Valeria Barroso": {"in": "12:01:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:51:00", "out": "18:03 G"}, "Camila Capaldi": {"in": "12:02:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "09:00:00", "out": "16:00:00"}, "Natalia Machado": {"in": "07:00:00", "out": "14:00:00"}, "Nahuel Martinez": {"in": "09:00:00", "out": "15:05 G"}, "Florencia Muga": {"in": "12:55 G", "out": "19:02:00"}, "Jonatan Murolo": {"in": "13:02 G", "out": "19:02:00"}, "Facundo Ravelo": {"in": "11:59:00", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:58 – 15:58", "out": "12:00 – 18:05 G"}}, "2026-05-25": {"Valeria Barroso": {"in": "Feriado", "out": null}, "Martin Bolívar": {"in": "Feriado", "out": null}, "Camila Capaldi": {"in": "Feriado", "out": null}, "Paula Fernandez": {"in": "Feriado", "out": null}, "Natalia Machado": {"in": "Feriado", "out": null}, "Nahuel Martinez": {"in": "Feriado", "out": null}, "Florencia Muga": {"in": "Feriado", "out": null}, "Jonatan Murolo": {"in": "Feriado", "out": null}, "Facundo Ravelo": {"in": "Feriado", "out": null}, "Melisa Scattolini": {"in": "Feriado", "out": null}}, "2026-05-26": {"Valeria Barroso": {"in": "12:01:00", "out": "19:03:00"}, "Martin Bolívar": {"in": "11:52:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "Ausencia", "out": null}, "Paula Fernandez": {"in": "09:00:00", "out": "16:00:00"}, "Natalia Machado": {"in": "07:00:00", "out": "14:03:00"}, "Nahuel Martinez": {"in": "09:00:00", "out": "16:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "11:59:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "12:59  G", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:58 – 15:58", "out": "12:06 – 19:08"}}, "2026-05-27": {"Valeria Barroso": {"in": "13:10ART", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:54:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "Ausencia", "out": null}, "Paula Fernandez": {"in": "08:59:00", "out": "16:00:00"}, "Natalia Machado": {"in": "06:58:00", "out": "14:03:00"}, "Nahuel Martinez": {"in": "Ausencia", "out": null}, "Florencia Muga": {"in": "12:00:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:11:00"}, "Facundo Ravelo": {"in": "13:00  G", "out": "19:02:00"}, "Melisa Scattolini": {"in": "07:59 – 15:58", "out": "12:03 – 19:05"}}, "2026-05-28": {"Valeria Barroso": {"in": "11:56:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:54:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:02:00"}, "Paula Fernandez": {"in": "08:57:00", "out": "16:00:00"}, "Natalia Machado": {"in": "07:00:00", "out": "14:01:00"}, "Nahuel Martinez": {"in": "09:00:00", "out": "16:00:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:02:00"}, "Jonatan Murolo": {"in": "11:57:00", "out": "19:02:00"}, "Facundo Ravelo": {"in": "12:59  G", "out": "19:02:00"}, "Melisa Scattolini": {"in": "**10:18 – 16:28", "out": "13:30 – 19:02"}}, "2026-05-29": {"Valeria Barroso": {"in": "11:57:00", "out": "19:02:00"}, "Martin Bolívar": {"in": "11:53:00", "out": "19:03:00"}, "Camila Capaldi": {"in": "12:00:00", "out": "19:04:00"}, "Paula Fernandez": {"in": "08:57:00", "out": "16:00:00"}, "Natalia Machado": {"in": "07:00:00", "out": "14:47:00"}, "Nahuel Martinez": {"in": "09:00:00", "out": "16:02:00"}, "Florencia Muga": {"in": "12:00:00", "out": "19:09:00"}, "Jonatan Murolo": {"in": "12:00:00", "out": "19:03:00"}, "Facundo Ravelo": {"in": "13:00  G", "out": "19:04:00"}, "Melisa Scattolini": {"in": "08:00 – 15:58", "out": "12:04 – 19:03"}}, "2026-06-01": {"Valeria Barroso": {"in": "08:00:00", "out": "15:21:00"}, "Martin Bolívar": {"in": "08:00:00", "out": "15:00:00"}, "Camila Capaldi": {"in": "08:01:00", "out": "15:02:00"}, "Paula Fernandez": {"in": "12:00:00", "out": "19:02:00"}, "Natalia Machado": {"in": "08:58:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "08:00 – 16:00", "out": "12:00 -19:03"}, "Florencia Muga": {"in": "08:00:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "Ausencia", "out": null}, "Facundo Ravelo": {"in": "08:00:00", "out": "11:44 FLX"}, "Melisa Scattolini": {"in": "06:59:00", "out": "14:00:00"}}, "2026-06-02": {"Valeria Barroso": {"in": "08:04:00", "out": "15:01:00"}, "Martin Bolívar": {"in": "07:59:00", "out": "15:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "14:00 G"}, "Paula Fernandez": {"in": "11:59:00", "out": "19:02:00"}, "Natalia Machado": {"in": "12:00:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00 – 16:00", "out": "12:00 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "08:03:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "12:59 G", "out": "19:02:00"}}, "2026-06-03": {"Valeria Barroso": {"in": "08:00:00", "out": "15:01:00"}, "Martin Bolívar": {"in": "11:55:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "14:04 G"}, "Paula Fernandez": {"in": "11:58:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:54:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:04 – 15:59", "out": "12:01 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "15:01:00"}, "Jonatan Murolo": {"in": "08:01:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:01:00", "out": "15:03:00"}, "Melisa Scattolini": {"in": "07:02:00", "out": "13:00 G"}}, "2026-06-04": {"Valeria Barroso": {"in": "08:00:00", "out": "15:02:00"}, "Martin Bolívar": {"in": "11:58:00", "out": "19:03:00"}, "Camila Capaldi": {"in": "08:02:00", "out": "14:10 G"}, "Paula Fernandez": {"in": "12:00:00", "out": "19:03:00"}, "Natalia Machado": {"in": "11:55:00", "out": "19:03:00"}, "Nahuel Martinez": {"in": "08:01 – 15:59", "out": "12:00 – 19:02"}, "Florencia Muga": {"in": "07:59:00", "out": "15:01:00"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:03:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "06:59:00", "out": "13:00 G"}}, "2026-06-05": {"Valeria Barroso": {"in": "08:01:00", "out": "15:04:00"}, "Martin Bolívar": {"in": "07:58:00", "out": "15:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "14:04 G"}, "Paula Fernandez": {"in": "11:59:00", "out": "19:02:00"}, "Natalia Machado": {"in": "09:00:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "07:59 – 16:01", "out": "12:00 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "07:59:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "07:01:00", "out": "13:05 G"}}, "2026-06-08": {"Valeria Barroso": {"in": "08:00:00", "out": "12:26 CAP"}, "Martin Bolívar": {"in": "07:59:00", "out": "15:01:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "12:01:00", "out": "19:02:00"}, "Natalia Machado": {"in": "08:56:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "07:59 – 15:59", "out": "12:01 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "12:28 CAP"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "Ausencia", "out": null}}, "2026-06-09": {"Valeria Barroso": {"in": "09:00 G", "out": "12:29 CAP"}, "Martin Bolívar": {"in": "07:59:00", "out": "15:05:00"}, "Camila Capaldi": {"in": "08:01:00", "out": "15:02:00"}, "Paula Fernandez": {"in": "13:00 G", "out": "19:02:00"}, "Natalia Machado": {"in": "12:50 G", "out": "19:02:00"}, "Nahuel Martinez": {"in": "07:58 – 16:00", "out": "12:02 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "12:29 CAP"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:01:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "Ausencia", "out": null}}, "2026-06-10": {"Valeria Barroso": {"in": "09:00 G", "out": "12:30 CAP"}, "Martin Bolívar": {"in": "07:59:00", "out": "15:01:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "12:58 G", "out": "19:02:00"}, "Natalia Machado": {"in": "13:00 G", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00 – 16:00", "out": "12:00 -19:02"}, "Florencia Muga": {"in": "07:59:00", "out": "12:29 CAP"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "07:00:00", "out": "14:00:00"}}, "2026-06-11": {"Valeria Barroso": {"in": "09:00 G", "out": "12:26 CAP"}, "Martin Bolívar": {"in": "08:00:00", "out": "15:00:00"}, "Camila Capaldi": {"in": "07:59:00", "out": "15:01:00"}, "Paula Fernandez": {"in": "13:00 G", "out": "19:02:00"}, "Natalia Machado": {"in": "12:59 G", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:06 – 16:00", "out": "12:01 – 19:03"}, "Florencia Muga": {"in": "08:00:00", "out": "12:26 CAP"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "Ausencia", "out": null}}, "2026-06-12": {"Valeria Barroso": {"in": "09:00 G", "out": "12:39 CAP"}, "Martin Bolívar": {"in": "11:56:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:01:00"}, "Paula Fernandez": {"in": "12:59 G", "out": "19:02:00"}, "Natalia Machado": {"in": "12:59 G", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00 – 15:59", "out": "12:07 – 19:02"}, "Florencia Muga": {"in": "Ausencia", "out": null}, "Jonatan Murolo": {"in": "08:00:00", "out": "11:30FLX"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "07:03:00", "out": "14:06:00"}}, "2026-06-15": {"Valeria Barroso": {"in": "Feriado", "out": null}, "Martin Bolívar": {"in": "Feriado", "out": null}, "Camila Capaldi": {"in": "Feriado", "out": null}, "Paula Fernandez": {"in": "Feriado", "out": null}, "Natalia Machado": {"in": "Feriado", "out": null}, "Nahuel Martinez": {"in": "Feriado", "out": null}, "Florencia Muga": {"in": "Feriado", "out": null}, "Jonatan Murolo": {"in": "Feriado", "out": null}, "Facundo Ravelo": {"in": "Feriado", "out": null}, "Melisa Scattolini": {"in": "Feriado", "out": null}}, "2026-06-16": {"Valeria Barroso": {"in": "08:07:00", "out": "12:38 CAP"}, "Martin Bolívar": {"in": "11:56:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:08:00"}, "Paula Fernandez": {"in": "12:01:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:49:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "07:58:00", "out": "12:25 CAP"}, "Jonatan Murolo": {"in": "08:01:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "12:00:00", "out": "19:02:00"}}, "2026-06-17": {"Valeria Barroso": {"in": "08:01:00", "out": "12:36 CAP"}, "Martin Bolívar": {"in": "07:59:00", "out": "15:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:02:00"}, "Paula Fernandez": {"in": "11:59:00", "out": "19:02:00"}, "Natalia Machado": {"in": "Ausencia", "out": null}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "07:58:00", "out": "12:27 CAP"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:01:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "07:00:00", "out": "14:05:00"}}, "2026-06-18": {"Valeria Barroso": {"in": "08:00:00", "out": "12:26 CAP"}, "Martin Bolívar": {"in": "07:59:00", "out": "15:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "12:01:00", "out": "19:03:00"}, "Natalia Machado": {"in": "Ausencia", "out": null}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "07:59:00", "out": "12:24 CAP"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "07:00:00", "out": "14:04:00"}}, "2026-06-19": {"Valeria Barroso": {"in": "08:00:00", "out": "15:06:00"}, "Martin Bolívar": {"in": "07:59:00", "out": "15:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:11:00"}, "Paula Fernandez": {"in": "11:58:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:59:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "07:58:00", "out": "15:00:00"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "06:59:00", "out": "14:00:00"}}, "2026-06-22": {"Valeria Barroso": {"in": "08:00:00", "out": "15:00:00"}, "Martin Bolívar": {"in": "07:59:00", "out": "08:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:02:00"}, "Paula Fernandez": {"in": "11:58:00", "out": "19:02:00"}, "Natalia Machado": {"in": "08:57:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "Licencia", "out": null}, "Florencia Muga": {"in": "07:59:00", "out": "11:31FLX"}, "Jonatan Murolo": {"in": "08:01:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "06:58:00", "out": "14:00:00"}}, "2026-06-23": {"Valeria Barroso": {"in": "08:00:00", "out": "12:27 CAP"}, "Martin Bolívar": {"in": "11:57:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:14:00"}, "Paula Fernandez": {"in": "12:01:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:58:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "07:59 – 16:00", "out": "12:13 – 18:00G"}, "Florencia Muga": {"in": "09:00 G", "out": "12:31CAP"}, "Jonatan Murolo": {"in": "08:00:00", "out": "14:04 G"}, "Facundo Ravelo": {"in": "08:00:00", "out": "14:03 G"}, "Melisa Scattolini": {"in": "11:57:00", "out": "19:02:00"}}, "2026-06-24": {"Valeria Barroso": {"in": "08:00:00", "out": "12:30 CAP"}, "Martin Bolívar": {"in": "11:58:00", "out": "19:02:00"}, "Camila Capaldi": {"in": "08:01:00", "out": "15:10:00"}, "Paula Fernandez": {"in": "11:59:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:59:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00 – 16:01", "out": "12:00 – 18:00G"}, "Florencia Muga": {"in": "08:59:00", "out": "12:31 CAP"}, "Jonatan Murolo": {"in": "08:01:00", "out": "14:00 G"}, "Facundo Ravelo": {"in": "08:15***", "out": "14:01 G"}, "Melisa Scattolini": {"in": "06:59:00", "out": "14:00:00"}}, "2026-06-25": {"Valeria Barroso": {"in": "08:00:00", "out": "12:31 CAP"}, "Martin Bolívar": {"in": "08:05:00", "out": "15:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:12:00"}, "Paula Fernandez": {"in": "12:01:00", "out": "19:02:00"}, "Natalia Machado": {"in": "12:01:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00 – 16:00", "out": "12:00 – 18:00G"}, "Florencia Muga": {"in": "12:01:00", "out": "18:01:00"}, "Jonatan Murolo": {"in": "08:00:00", "out": "14:03 G"}, "Facundo Ravelo": {"in": "08:00:00", "out": "14:00 G"}, "Melisa Scattolini": {"in": "07:00:00", "out": "14:01:00"}}, "2026-06-26": {"Valeria Barroso": {"in": "08:00:00", "out": "12:38 CAP"}, "Martin Bolívar": {"in": "07:59:00", "out": "15:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "12:00:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:55:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "07:59 – 16:11**", "out": "12:01 – 18:00G"}, "Florencia Muga": {"in": "09:00:00", "out": "12:00 CAP"}, "Jonatan Murolo": {"in": "07:59:00", "out": "14:00 G"}, "Facundo Ravelo": {"in": "08:00:00", "out": "14:00 G"}, "Melisa Scattolini": {"in": "06:59:00", "out": "14:00:00"}}, "2026-06-29": {"Valeria Barroso": {"in": "08:00:00", "out": "12:30 CAP"}, "Martin Bolívar": {"in": "07:59:00", "out": "15:00:00"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:00:00"}, "Paula Fernandez": {"in": "12:00:00", "out": "19:02:00"}, "Natalia Machado": {"in": "08:59:00", "out": "16:00:00"}, "Nahuel Martinez": {"in": "08:00 – 16:00", "out": "12:02 – 19:02"}, "Florencia Muga": {"in": "07:57:00", "out": "12:24 CAP"}, "Jonatan Murolo": {"in": "08:15:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:10:00"}, "Melisa Scattolini": {"in": "07:00:00", "out": "14:12:00"}}, "2026-06-30": {"Valeria Barroso": {"in": "08:00:00", "out": "12:30 CAP"}, "Martin Bolívar": {"in": "07:59:00", "out": "14:02 G"}, "Camila Capaldi": {"in": "07:59:00", "out": "15:03:00"}, "Paula Fernandez": {"in": "12:01:00", "out": "19:02:00"}, "Natalia Machado": {"in": "11:51:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00 -12:01", "out": "16:08 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "12:30 CAP"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:00:00"}, "Melisa Scattolini": {"in": "11:59:00", "out": "19:03:00"}}, "2026-07-01": {"Valeria Barroso": {"in": "08:01:00", "out": "15:00:00"}, "Martin Bolívar": {"in": "07:59:00", "out": "14:00 G"}, "Camila Capaldi": {"in": "08:00:00", "out": "15:12:00"}, "Paula Fernandez": {"in": "12:02:00", "out": "19:07:00"}, "Natalia Machado": {"in": "11:56:00", "out": "19:02:00"}, "Nahuel Martinez": {"in": "08:00 – 12:00", "out": "16:00 – 19:02"}, "Florencia Muga": {"in": "08:00:00", "out": "12:25 CAP"}, "Jonatan Murolo": {"in": "08:00:00", "out": "15:00:00"}, "Facundo Ravelo": {"in": "08:00:00", "out": "15:01:00"}, "Melisa Scattolini": {"in": "06:59:00", "out": "14:00:00"}}, "2026-07-02": {"Valeria Barroso": {"in": null, "out": null}, "Martin Bolívar": {"in": null, "out": null}, "Camila Capaldi": {"in": null, "out": null}, "Paula Fernandez": {"in": null, "out": null}, "Natalia Machado": {"in": null, "out": null}, "Nahuel Martinez": {"in": null, "out": null}, "Florencia Muga": {"in": null, "out": null}, "Jonatan Murolo": {"in": null, "out": null}, "Facundo Ravelo": {"in": null, "out": null}, "Melisa Scattolini": {"in": null, "out": null}}, "2026-07-03": {"Valeria Barroso": {"in": null, "out": null}, "Martin Bolívar": {"in": null, "out": null}, "Camila Capaldi": {"in": null, "out": null}, "Paula Fernandez": {"in": null, "out": null}, "Natalia Machado": {"in": null, "out": null}, "Nahuel Martinez": {"in": null, "out": null}, "Florencia Muga": {"in": null, "out": null}, "Jonatan Murolo": {"in": null, "out": null}, "Facundo Ravelo": {"in": null, "out": null}, "Melisa Scattolini": {"in": null, "out": null}}}}
+</script>
+<script>
+/* =========================================================
+   Torre de Control — Equipo Atención Telefónica
+   ========================================================= */
+
+const RAW = JSON.parse(document.getElementById('team-data').textContent);
+
+const MONTH_KEYS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const MONTH_LABELS = {ene:"Enero",feb:"Febrero",mar:"Marzo",abr:"Abril",may:"Mayo",jun:"Junio",
+  jul:"Julio",ago:"Agosto",sep:"Septiembre",oct:"Octubre",nov:"Noviembre",dic:"Diciembre"};
+
+const NAMES = RAW.roster.map(r => r.name);
+const PALETTE = ['#1E6E68','#3A6EA5','#D65B45','#C98A1F','#6C4FA8','#2F9E8F','#4C7A9E','#B25C3A','#8A6BA8','#4E8F6B'];
+const COLOR = {};
+NAMES.forEach((n,i)=> COLOR[n] = PALETTE[i % PALETTE.length]);
+
+const TODAY = new Date(); // real "today" per environment
+
+/* ---------------- state ---------------- */
+const APP = {
+  view: 'resumen',
+  prodMonth: null,
+  conexDateIdx: null,
+  colaborador: null,
+  colabTab: 'productividad',
+  overrides: { roster:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{} },
+};
+const METRIC_FIELDS = ['ATT','ACW','HOLD','TMO','Llamados','ActDatos','GDigital','Nota'];
+const METRIC_LABELS = {ATT:'ATT', ACW:'ACW', HOLD:'HOLD', TMO:'TMO', Llamados:'Llamados', ActDatos:'% Datos', GDigital:'G. Digital', Nota:'Nota'};
+
+/* ---------------- storage ---------------- */
+const LOCAL_KEY = 'torre-control-overrides';
+const hasCloudStorage = () => (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function');
+async function loadOverrides(){
+  try{
+    if(hasCloudStorage()){
+      const res = await window.storage.get('overrides', false);
+      if(res && res.value){
+        const parsed = JSON.parse(res.value);
+        APP.overrides = Object.assign({roster:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{}}, parsed);
+      }
+      return;
+    }
+  }catch(e){ /* fall through to localStorage */ }
+  try{
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      APP.overrides = Object.assign({roster:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{}}, parsed);
+    }
+  }catch(e){ console.warn('No se pudieron cargar los datos guardados', e); }
+}
+async function saveOverrides(){
+  try{
+    if(hasCloudStorage()){
+      await window.storage.set('overrides', JSON.stringify(APP.overrides), false);
+      return;
+    }
+  }catch(e){ /* fall through to localStorage */ }
+  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(APP.overrides)); }
+  catch(e){ console.error('No se pudo guardar la información en este navegador', e); }
+}
+
+/* ---------------- helpers ---------------- */
+function initials(name){
+  return name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+function avatar(name, size){
+  size = size||28;
+  return `<div class="avatar" style="width:${size}px;height:${size}px;background:${COLOR[name]};font-size:${size*0.38}px;">${initials(name)}</div>`;
+}
+function parseHM(str){
+  if(typeof str !== 'string') return null;
+  const m = str.match(/^(\d{1,2}):(\d{2})/);
+  if(!m) return null;
+  return {h:parseInt(m[1],10), m:parseInt(m[2],10), total: parseInt(m[1],10)*60+parseInt(m[2],10)};
+}
+function timeToMinutes(str){
+  const p = parseHM(str);
+  return p ? p.total : null;
+}
+function minutesToHHMM(min){
+  if(min==null || isNaN(min)) return '—';
+  const h = Math.floor(min/60), m = Math.round(min%60);
+  return `${h}h ${String(m).padStart(2,'0')}m`;
+}
+function fmtDateLong(d){
+  return d.toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+}
+function fmtDateShort(iso){
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('es-AR', {weekday:'short', day:'2-digit', month:'short'});
+}
+function parseHorarioStart(horario){
+  const m = (horario||'').match(/(\d{1,2})/);
+  return m ? parseInt(m[1],10) : null;
+}
+function modalidadClass(mod){
+  if(!mod) return 'other';
+  const m = mod.toLowerCase();
+  if(m.includes('home')) return 'home';
+  if(m.includes('central')) return 'central';
+  if(m.includes('palomit')) return 'palomitas';
+  if(m.includes('mayo')) return 'mayo';
+  return 'other';
+}
+function getRoster(name){
+  const base = RAW.roster.find(r=>r.name===name) || {};
+  const ov = APP.overrides.roster[name] || {};
+  return Object.assign({name, tarea:'—'}, base, ov);
+}
+function getMonitoreo(name){
+  const ultimo = APP.overrides.monitoreos[name] || RAW.monitoreos[name] || null;
+  if(!ultimo) return {ultimo:null, dias:null, estado:'Sin dato'};
+  const d = new Date(ultimo+'T00:00:00');
+  const dias = Math.floor((TODAY - d) / 86400000);
+  let estado = 'Ok';
+  if(dias > 14) estado = 'Muy atrasado';
+  else if(dias > 7) estado = 'Atrasado';
+  return {ultimo, dias, estado};
+}
+function getProdCheck(name){
+  const base = (RAW.prod_check[name]) || {};
+  const ov = APP.overrides.prod_check[name] || {};
+  return Object.assign({}, base, ov);
+}
+function getMetric(name, mk){
+  const base = (RAW.monthly_metrics[mk] && RAW.monthly_metrics[mk][name]) || {};
+  const ov = (APP.overrides.metrics[mk] && APP.overrides.metrics[mk][name]) || {};
+  return Object.assign({ATT:null,ACW:null,HOLD:null,TMO:null,Llamados:null,ActDatos:null,GDigital:null,Nota:null}, base, ov);
+}
+async function setMetric(name, mk, field, value){
+  if(!APP.overrides.metrics[mk]) APP.overrides.metrics[mk] = {};
+  if(!APP.overrides.metrics[mk][name]) APP.overrides.metrics[mk][name] = {};
+  APP.overrides.metrics[mk][name][field] = value;
+  await saveOverrides();
+}
+function getConexEntry(date, name){
+  const base = (RAW.conex[date] && RAW.conex[date][name]) || {in:null, out:null};
+  const ov = (APP.overrides.conex[date] && APP.overrides.conex[date][name]) || {};
+  return Object.assign({}, base, ov);
+}
+async function setConexEntry(date, name, field, value){
+  if(!APP.overrides.conex[date]) APP.overrides.conex[date] = {};
+  if(!APP.overrides.conex[date][name]) APP.overrides.conex[date][name] = {};
+  APP.overrides.conex[date][name][field] = value;
+  await saveOverrides();
+}
+async function addConexDate(date){
+  if(!RAW.conex[date]) RAW.conex[date] = {};
+  if(!APP.overrides.conex[date]) APP.overrides.conex[date] = {};
+  NAMES.forEach(n=>{
+    if(!RAW.conex[date][n]) RAW.conex[date][n] = {in:null, out:null};
+  });
+  await saveOverrides();
+}
+function getDevol1(name){
+  return (APP.overrides.devol1[name]!==undefined) ? APP.overrides.devol1[name] : (RAW.devoluciones[name]||null);
+}
+async function setDevol1(name, value){
+  APP.overrides.devol1[name] = value;
+  await saveOverrides();
+}
+function getDevol2(name){
+  const ov = APP.overrides.devol2[name];
+  return Object.assign({confeccion:null, fecha:null}, ov||{});
+}
+async function setDevol2(name, field, value){
+  const cur = getDevol2(name);
+  cur[field] = value;
+  APP.overrides.devol2[name] = cur;
+  await saveOverrides();
+}
+function monthHasData(mk){
+  const vals = RAW.monthly_metrics[mk] || {};
+  const anyRaw = Object.values(vals).some(v=>v.ATT && v.ATT!=='AD');
+  const ovVals = APP.overrides.metrics[mk] || {};
+  const anyOv = Object.values(ovVals).some(v=>METRIC_FIELDS.some(f=>v[f]!=null && v[f]!==''));
+  return anyRaw || anyOv;
+}
+function latestMonthWithData(){
+  for(let i=MONTH_KEYS.length-1;i>=0;i--){
+    if(monthHasData(MONTH_KEYS[i])) return MONTH_KEYS[i];
+  }
+  return 'ene';
+}
+function monthsWithData(){
+  return MONTH_KEYS.filter(monthHasData);
+}
+function conexDatesSorted(){
+  return Object.keys(RAW.conex).sort();
+}
+function safeChart(canvasId, config){
+  const el = document.getElementById(canvasId);
+  if(!el) return null;
+  try{
+    if(typeof Chart === 'undefined') throw new Error('Chart.js no disponible');
+    return new Chart(el, config);
+  }catch(e){
+    console.warn('No se pudo renderizar el gráfico', canvasId, e);
+    if(el.parentElement){
+      const msg = document.createElement('div');
+      msg.className = 'empty';
+      msg.style.cssText = 'padding:24px; text-align:center; color:var(--ink-faint); font-size:12.5px;';
+      msg.textContent = 'No se pudo cargar el gráfico (sin conexión a internet).';
+      el.replaceWith(msg);
+    }
+    return null;
+  }
+}
+
+/* ---------------- nav ---------------- */
+document.getElementById('nav').addEventListener('click', (e)=>{
+  const item = e.target.closest('.nav-item');
+  if(!item) return;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  item.classList.add('active');
+  APP.view = item.dataset.view;
+  render();
+});
+
+function render(){
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+  if(APP.view==='resumen') renderResumen(main);
+  else if(APP.view==='equipo') renderEquipo(main);
+  else if(APP.view==='colaborador') renderColaborador(main);
+  else if(APP.view==='productividad') renderProductividad(main);
+  else if(APP.view==='monitoreos') renderMonitoreos(main);
+  else if(APP.view==='conexion') renderConexion(main);
+}
+function goToColaborador(name){
+  APP.view='colaborador';
+  APP.colaborador = name;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const item = document.querySelector('.nav-item[data-view="colaborador"]');
+  if(item) item.classList.add('active');
+  render();
+}
+
+/* ================= RESUMEN ================= */
+function renderResumen(main){
+  const mk = latestMonthWithData();
+  const metrics = {}; NAMES.forEach(n=>{ metrics[n] = getMetric(n, mk); });
+  const tmoVals = NAMES.map(n=>timeToMinutes(metrics[n] && metrics[n].TMO)).filter(v=>v!=null);
+  const tmoAvg = tmoVals.length ? tmoVals.reduce((a,b)=>a+b,0)/tmoVals.length : null;
+  const datosVals = NAMES.map(n=> metrics[n] && metrics[n].ActDatos).filter(v=>v!=null);
+  const datosAvg = datosVals.length ? (datosVals.reduce((a,b)=>a+b,0)/datosVals.length) : null;
+
+  const monitoreoRows = NAMES.map(n=>({name:n, ...getMonitoreo(n)}));
+  const atrasados = monitoreoRows.filter(r=>r.dias!=null && r.dias>7).sort((a,b)=>b.dias-a.dias);
+
+  const homeCount = NAMES.filter(n=>modalidadClass(getRoster(n).modalidad)==='home').length;
+  const centralCount = NAMES.filter(n=>modalidadClass(getRoster(n).modalidad)==='central').length;
+
+  main.innerHTML = `
+    <div class="topbar">
+      <div>
+        <h1>Resumen del equipo</h1>
+        <p>Panorama general de productividad, monitoreos y asistencia.</p>
+      </div>
+      <div class="topbar-right">
+        <div class="today-chip">${fmtDateLong(TODAY)}</div>
+      </div>
+    </div>
+
+    ${atrasados.length ? `
+    <div class="banner">
+      ${iconAlert()}
+      <span><b>${atrasados.length} colaborador${atrasados.length>1?'es':''}</b> con monitoreo atrasado hace más de 7 días. Revisá la sección Monitoreos.</span>
+    </div>` : ''}
+
+    <div class="grid grid-kpi">
+      <div class="kpi">
+        <div class="label">Equipo</div>
+        <div class="value">${NAMES.length}<small>personas</small></div>
+        <div class="foot">${homeCount} home · ${centralCount} central</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Monitoreos atrasados</div>
+        <div class="value">${atrasados.length}<small>/ ${NAMES.length}</small></div>
+        <div class="foot ${atrasados.length?'alert':'good'}">${atrasados.length? 'Requieren seguimiento' : 'Todo al día'}</div>
+      </div>
+      <div class="kpi">
+        <div class="label">TMO promedio · ${MONTH_LABELS[mk]}</div>
+        <div class="value" style="font-size:22px;">${minutesToHHMM(tmoAvg)}</div>
+        <div class="foot">Tiempo medio operativo del equipo</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Actualización de datos · ${MONTH_LABELS[mk]}</div>
+        <div class="value">${datosAvg!=null?datosAvg.toFixed(0):'—'}<small>%</small></div>
+        <div class="foot">Promedio del equipo</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Evolución mensual <span class="sub">TMO promedio &amp; llamados totales</span></h3>
+        <canvas id="chart-evol" height="130"></canvas>
+      </div>
+      <div class="card">
+        <h3>Estado de monitoreos</h3>
+        <canvas id="chart-donut" height="130"></canvas>
+        <div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
+          ${atrasados.slice(0,5).map(r=>`
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;">
+              <span class="name-cell">${avatar(r.name,22)} ${r.name}</span>
+              <span class="badge ${r.dias>14?'bad':'warn'}">${r.dias} días</span>
+            </div>`).join('') || '<div class="empty" style="padding:10px 0;">Sin atrasos 🎉</div>'}
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <h3>Ranking gestión digital <span class="sub">${MONTH_LABELS[mk]}</span></h3>
+      <canvas id="chart-rank" height="90"></canvas>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <h3>Equipo <span class="sub">Horario, modalidad y tarea de julio</span></h3>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>Nombre</th><th>Horario</th><th>Modalidad</th><th>Tarea</th><th>Productividad</th><th>Monitoreo</th></tr></thead>
+        <tbody id="resumen-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+
+    <h3 style="font-family:var(--font-display); font-size:15px; color:var(--brand-dark); margin:22px 0 12px 2px;">Fichas rápidas del equipo</h3>
+    <div class="grid" id="resumen-cards" style="grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));"></div>
+
+    <div class="foot-note">Torre de Control · Datos importados desde planilla de seguimiento 2026 · Hacé clic en una persona para ver su ficha completa</div>
+  `;
+
+  // ---- populate DOM that must always work, even if Chart.js fails to load ----
+  const rtbody = document.getElementById('resumen-tbody');
+  NAMES.forEach(name=>{
+    const r = getRoster(name);
+    const check = getProdCheck(name);
+    const m = getMonitoreo(name);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name)} <span>${name}</span></div></td>
+      <td class="mono">${r.horario||'—'}</td>
+      <td><span class="pill ${modalidadClass(r.modalidad)}">${r.modalidad||'—'}</span></td>
+      <td style="color:var(--ink-soft); font-size:12.5px;">${r.tarea||'—'}</td>
+      <td>${prodDots(name, check)}</td>
+      <td>${monitoreoBadge(m)}</td>
+    `;
+    rtbody.appendChild(tr);
+  });
+  rtbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+
+  const cardsWrap = document.getElementById('resumen-cards');
+  NAMES.forEach(name=>{
+    const r = getRoster(name);
+    const v = metrics[name] || {};
+    const m = getMonitoreo(name);
+    const card = document.createElement('div');
+    card.className='kpi';
+    card.style.cursor='pointer';
+    card.innerHTML = `
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+        ${avatar(name,34)}
+        <div>
+          <div style="font-weight:600; font-size:13px; color:var(--brand-dark); line-height:1.2;">${name}</div>
+          <span class="pill ${modalidadClass(r.modalidad)}" style="margin-top:3px; display:inline-block;">${r.modalidad||'—'}</span>
+        </div>
+      </div>
+      <div style="font-size:11.5px; color:var(--ink-soft); display:flex; flex-direction:column; gap:3px;">
+        <span>Horario: <b class="mono">${r.horario||'—'}</b></span>
+        <span>TMO ${MONTH_LABELS[mk]}: <b class="mono">${v.TMO && v.TMO!=='AD' ? v.TMO : '—'}</b></span>
+        <span>Llamados: <b class="mono">${typeof v.Llamados==='number'?v.Llamados:'—'}</b></span>
+      </div>
+      <div style="margin-top:10px;">${monitoreoBadge(m)}</div>
+    `;
+    card.addEventListener('click', ()=> goToColaborador(name));
+    cardsWrap.appendChild(card);
+  });
+
+  // ---- charts (best-effort; never block the rest of the page) ----
+  const months = monthsWithData();
+  const tmoSeries = months.map(mk2=>{
+    const vals = NAMES.map(n=>timeToMinutes(getMetric(n,mk2).TMO)).filter(v=>v!=null);
+    return vals.length ? +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : null;
+  });
+  const callSeries = months.map(mk2=>{
+    const vals = NAMES.map(n=>{
+      const v = getMetric(n,mk2).Llamados;
+      return (typeof v === 'number') ? v : null;
+    }).filter(v=>v!=null);
+    return vals.length ? vals.reduce((a,b)=>a+b,0) : null;
+  });
+
+  safeChart('chart-evol', {
+    data:{
+      labels: months.map(m=>MONTH_LABELS[m].slice(0,3)),
+      datasets:[
+        {type:'bar', label:'Llamados totales', data: callSeries, backgroundColor:'#CFE7E2', yAxisID:'y1', borderRadius:5, order:2},
+        {type:'line', label:'TMO promedio (min)', data: tmoSeries, borderColor:'#1E6E68', backgroundColor:'#1E6E68', yAxisID:'y2', tension:.35, pointRadius:3, borderWidth:2.5, order:1}
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{family:'Inter', size:11}}} },
+      scales:{
+        y1:{ position:'left', grid:{display:false}, ticks:{font:{family:'Inter',size:10}} },
+        y2:{ position:'right', grid:{display:false}, ticks:{font:{family:'Inter',size:10}} },
+        x:{ grid:{display:false}, ticks:{font:{family:'Inter',size:11}} }
+      }
+    }
+  });
+
+  safeChart('chart-donut', {
+    type:'doughnut',
+    data:{
+      labels:['Al día','Atrasado','Muy atrasado'],
+      datasets:[{
+        data:[
+          monitoreoRows.filter(r=>r.dias!=null && r.dias<=7).length,
+          monitoreoRows.filter(r=>r.dias!=null && r.dias>7 && r.dias<=14).length,
+          monitoreoRows.filter(r=>r.dias!=null && r.dias>14).length,
+        ],
+        backgroundColor:['#3FAE96','#E4A121','#D65B45'],
+        borderWidth:0,
+      }]
+    },
+    options:{ cutout:'68%', plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{family:'Inter',size:11}}}} }
+  });
+
+  const rankSorted = NAMES.map(n=>({name:n, v: (metrics[n] && typeof metrics[n].GDigital==='number') ? metrics[n].GDigital : 0}))
+    .sort((a,b)=>b.v-a.v);
+  safeChart('chart-rank', {
+    type:'bar',
+    data:{
+      labels: rankSorted.map(r=>r.name.split(' ')[0]),
+      datasets:[{ data: rankSorted.map(r=>r.v), backgroundColor: rankSorted.map(r=>COLOR[r.name]), borderRadius:6, barThickness:22 }]
+    },
+    options:{
+      indexAxis:'y',
+      plugins:{legend:{display:false}},
+      scales:{ x:{grid:{color:'#F0F3F3'}, ticks:{font:{family:'Inter',size:10.5}}}, y:{grid:{display:false}, ticks:{font:{family:'Inter',size:11.5}}} }
+    }
+  });
+}
+
+function iconAlert(){
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.6 1.8 18a1.8 1.8 0 0 0 1.5 2.7h17.4a1.8 1.8 0 0 0 1.5-2.7L13.7 3.6a1.8 1.8 0 0 0-3.4 0Z"/><path d="M12 9v4M12 16.5h.01"/></svg>`;
+}
+
+/* ================= EQUIPO ================= */
+function renderEquipo(main){
+  main.innerHTML = `
+    <div class="topbar">
+      <div>
+        <h1>Equipo</h1>
+        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Hacé clic en un dato para editarlo.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="scroll-x">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th><th>Horario</th><th>Modalidad</th><th>Tarea / nota</th>
+            <th>Productividad ${new Date().getFullYear()}</th><th>Último monitoreo</th><th>Devolución 1er sem.</th>
+          </tr>
+        </thead>
+        <tbody id="equipo-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+    <div class="foot-note">Los cambios se guardan automáticamente en este navegador.</div>
+  `;
+  const tbody = document.getElementById('equipo-tbody');
+  NAMES.forEach(name=>{
+    const r = getRoster(name);
+    const mon = getMonitoreo(name);
+    const check = getProdCheck(name);
+    const devol = getDevol1(name);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name)} <span>${name}</span></div></td>
+      <td>${horarioSelect(name, r.horario)}</td>
+      <td>${modalidadSelect(name, r.modalidad)}</td>
+      <td><span class="editable" data-field="tarea" data-name="${name}">${r.tarea||'—'}</span></td>
+      <td>${prodDots(name, check)}</td>
+      <td>${monitoreoBadge(mon)}</td>
+      <td class="mono">${devol || '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-open]').forEach(el=>{
+    el.addEventListener('click', ()=> goToColaborador(el.dataset.open));
+  });
+
+  // inline edit for text fields (tarea/nota only — horario y modalidad usan <select>)
+  tbody.querySelectorAll('.editable').forEach(span=>{
+    span.addEventListener('click', ()=>{
+      const name = span.dataset.name, field = span.dataset.field;
+      const current = span.textContent.trim()==='—' ? '' : span.textContent.trim();
+      const input = document.createElement('input');
+      input.type='text'; input.value=current; input.style.width='140px';
+      span.replaceWith(input);
+      input.focus();
+      const commit = async ()=>{
+        const val = input.value.trim();
+        APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {[field]: val});
+        await saveOverrides();
+        render();
+      };
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', e=>{ if(e.key==='Enter') input.blur(); });
+    });
+  });
+
+  // horario select change
+  tbody.querySelectorAll('select[data-field="horario"]').forEach(sel=>{
+    sel.addEventListener('change', async ()=>{
+      const name = sel.dataset.name;
+      APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {horario: sel.value});
+      await saveOverrides();
+      render();
+    });
+  });
+
+  // modalidad select change
+  tbody.querySelectorAll('select[data-field="modalidad"]').forEach(sel=>{
+    sel.addEventListener('change', async ()=>{
+      const name = sel.dataset.name;
+      APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {modalidad: sel.value});
+      await saveOverrides();
+      render();
+    });
+  });
+
+  // productividad dots click to cycle
+  tbody.querySelectorAll('.dot-cell').forEach(dot=>{
+    dot.addEventListener('click', async ()=>{
+      const name = dot.dataset.name, mkey = dot.dataset.month;
+      const cur = getProdCheck(name)[mkey];
+      let next;
+      if(cur==='ok') next='pendiente';
+      else if(cur==='pendiente') next=null;
+      else next='ok';
+      if(!APP.overrides.prod_check[name]) APP.overrides.prod_check[name]={};
+      APP.overrides.prod_check[name][mkey]=next;
+      await saveOverrides();
+      render();
+    });
+  });
+}
+
+function modalidadSelect(name, current){
+  const opts = ['Central','Home','Palomitas','1ro de Mayo','Otro'];
+  const cls = modalidadClass(current);
+  const list = (current && !opts.includes(current)) ? [...opts, current] : opts;
+  return `<select data-field="modalidad" data-name="${name}" class="pill ${cls}" style="border:1px solid var(--line);">
+    <option value="" ${!current?'selected':''}>—</option>
+    ${list.map(o=>`<option value="${o}" ${current===o?'selected':''}>${o}</option>`).join('')}
+  </select>`;
+}
+const HORARIO_OPTIONS = ['12 – 19','8 – 15','7 – 14','CORTADO'];
+function horarioSelect(name, current){
+  const list = (current && !HORARIO_OPTIONS.includes(current)) ? [...HORARIO_OPTIONS, current] : HORARIO_OPTIONS;
+  return `<select data-field="horario" data-name="${name}" class="horario-select">
+    <option value="" ${!current?'selected':''}>—</option>
+    ${list.map(o=>`<option value="${o}" ${current===o?'selected':''}>${o}</option>`).join('')}
+  </select>`;
+}
+function prodDots(name, check){
+  return `<div style="display:flex; gap:4px;">
+    ${MONTH_KEYS.slice(0,12).map(mk=>{
+      const v = check[mk];
+      let bg = '#E7ECEC', title='Sin dato';
+      if(v==='ok'){ bg='#3FAE96'; title='OK'; }
+      else if(v==='pendiente'){ bg='#E4A121'; title='Pendiente'; }
+      return `<div class="dot-cell" data-name="${name}" data-month="${mk}" title="${MONTH_LABELS[mk]}: ${title}" style="width:11px;height:11px;border-radius:3px;background:${bg};cursor:pointer;"></div>`;
+    }).join('')}
+  </div>`;
+}
+function monitoreoBadge(mon){
+  if(mon.dias==null) return `<span class="badge neutral">Sin dato</span>`;
+  let cls='ok', label=`${mon.dias} días`;
+  if(mon.dias>14) cls='bad'; else if(mon.dias>7) cls='warn';
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+/* ================= FICHA DE COLABORADOR ================= */
+function renderColaborador(main){
+  if(!APP.colaborador || !NAMES.includes(APP.colaborador)) APP.colaborador = NAMES[0];
+  const name = APP.colaborador;
+  const r = getRoster(name);
+  const mon = getMonitoreo(name);
+  const tab = APP.colabTab || 'productividad';
+
+  main.innerHTML = `
+    <div class="topbar">
+      <div>
+        <h1>Ficha de colaborador</h1>
+        <p>Toda la información de la persona en un solo lugar: productividad, conexión y devoluciones.</p>
+      </div>
+      <div class="topbar-right">
+        <select id="colab-select"></select>
+        <button class="btn primary" id="colab-export-pdf">🖨️ Exportar PDF</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      ${avatar(name, 52)}
+      <div style="flex:1; min-width:200px;">
+        <div style="font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--brand-dark);">${name}</div>
+        <div style="display:flex; align-items:center; gap:16px; margin-top:6px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-soft);">
+          <span style="display:flex; align-items:center; gap:6px;">Horario: ${horarioSelect(name, r.horario)}</span>
+          <span>Tarea/nota: <span class="editable" data-field="tarea" data-name="${name}">${r.tarea||'—'}</span></span>
+        </div>
+      </div>
+      <div>${modalidadSelect(name, r.modalidad)}</div>
+      <div>${monitoreoBadge(mon)}</div>
+    </div>
+
+    <div class="seg" id="colab-tabs" style="margin-bottom:16px;">
+      <button data-tab="productividad" class="${tab==='productividad'?'active':''}">Productividad</button>
+      <button data-tab="conexion" class="${tab==='conexion'?'active':''}">Conexión y desconexión</button>
+      <button data-tab="devoluciones" class="${tab==='devoluciones'?'active':''}">Devoluciones y monitoreo</button>
+    </div>
+
+    <div id="colab-body"></div>
+  `;
+
+  const sel = document.getElementById('colab-select');
+  NAMES.forEach(n=>{
+    const opt = document.createElement('option');
+    opt.value = n; opt.textContent = n;
+    if(n===name) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', ()=>{ APP.colaborador = sel.value; render(); });
+  document.getElementById('colab-export-pdf').addEventListener('click', ()=> openExportModal(name));
+
+  document.getElementById('colab-tabs').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-tab]');
+    if(!btn) return;
+    APP.colabTab = btn.dataset.tab;
+    render();
+  });
+
+  // header editable fields (tarea/nota)
+  main.querySelectorAll('.editable').forEach(span=>{
+    span.addEventListener('click', ()=>{
+      const nm = span.dataset.name, field = span.dataset.field;
+      const current = span.textContent.trim()==='—' ? '' : span.textContent.trim();
+      const input = document.createElement('input');
+      input.type='text'; input.value=current; input.style.width='140px';
+      span.replaceWith(input);
+      input.focus();
+      const commit = async ()=>{
+        const val = input.value.trim();
+        APP.overrides.roster[nm] = Object.assign({}, APP.overrides.roster[nm], {[field]: val});
+        await saveOverrides();
+        render();
+      };
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', e2=>{ if(e2.key==='Enter') input.blur(); });
+    });
+  });
+  main.querySelector('select[data-field="modalidad"]').addEventListener('change', async (e)=>{
+    APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {modalidad: e.target.value});
+    await saveOverrides();
+    render();
+  });
+  main.querySelector('select[data-field="horario"]').addEventListener('change', async (e)=>{
+    APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {horario: e.target.value});
+    await saveOverrides();
+    render();
+  });
+
+  const body = document.getElementById('colab-body');
+  if(tab==='productividad') renderColabProductividad(body, name);
+  else if(tab==='conexion') renderColabConexion(body, name);
+  else renderColabDevoluciones(body, name);
+}
+
+function metricInputCell(name, mk, field, value){
+  const isText = field==='Nota';
+  return `<input type="text" class="mono metric-input" data-name="${name}" data-mk="${mk}" data-field="${field}"
+    value="${value==null?'':String(value)}" placeholder="—"
+    style="width:${isText?'150px':'86px'}; text-align:${isText?'left':'center'};">`;
+}
+function renderColabProductividad(body, name){
+  body.innerHTML = `
+    <div class="card">
+      <h3>Productividad mensual <span class="sub">Editá cualquier celda y se guarda automáticamente</span></h3>
+      <div class="scroll-x">
+      <table>
+        <thead><tr>
+          <th>Mes</th><th>ATT</th><th>ACW</th><th>HOLD</th><th>TMO</th><th>Llamados</th><th>% Datos</th><th>G. Digital</th><th>Nota</th>
+        </tr></thead>
+        <tbody id="colab-metrics-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+    <div class="foot-note">Formato de tiempos hh:mm:ss (ej. 04:15:00). Escribí "AD" en ATT si estuvo ausente ese mes.</div>
+  `;
+  const tbody = document.getElementById('colab-metrics-tbody');
+  MONTH_KEYS.forEach(mk=>{
+    const v = getMetric(name, mk);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${MONTH_LABELS[mk]}</b></td>
+      <td>${metricInputCell(name,mk,'ATT',v.ATT)}</td>
+      <td>${metricInputCell(name,mk,'ACW',v.ACW)}</td>
+      <td>${metricInputCell(name,mk,'HOLD',v.HOLD)}</td>
+      <td>${metricInputCell(name,mk,'TMO',v.TMO)}</td>
+      <td>${metricInputCell(name,mk,'Llamados',v.Llamados)}</td>
+      <td>${metricInputCell(name,mk,'ActDatos',v.ActDatos)}</td>
+      <td>${metricInputCell(name,mk,'GDigital',v.GDigital)}</td>
+      <td>${metricInputCell(name,mk,'Nota',v.Nota)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.metric-input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const {name:nm, mk, field} = inp.dataset;
+      let val = inp.value.trim();
+      if(val==='') val = null;
+      else if(['Llamados','ActDatos','GDigital'].includes(field) && val!=='AD' && !isNaN(parseFloat(val.replace(',','.')))){
+        val = parseFloat(val.replace(',','.'));
+      }
+      await setMetric(nm, mk, field, val);
+    });
+  });
+}
+
+function renderColabConexion(body, name){
+  const dates = conexDatesSorted();
+  body.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <h3>Agregar fecha</h3>
+      <div class="toolbar" style="margin:0;">
+        <input type="date" id="colab-new-date">
+        <button class="btn primary" id="colab-add-date">+ Agregar día</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Historial de conexión y desconexión <span class="sub">${name}</span></h3>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Estado</th></tr></thead>
+        <tbody id="colab-conex-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+  `;
+  const tbody = document.getElementById('colab-conex-tbody');
+  dates.slice().reverse().forEach(date=>{
+    const entry = getConexEntry(date, name);
+    const roster = getRoster(name);
+    const startH = parseHorarioStart(roster.horario);
+    const inParsed = parseHM(entry.in);
+    let estado='Sin dato', cls='neutral';
+    if(inParsed){
+      const scheduled = startH!=null ? startH*60 : null;
+      if(scheduled!=null && inParsed.total > scheduled+10){ estado='Tarde'; cls='bad'; }
+      else { estado='Puntual'; cls='ok'; }
+    } else if(typeof entry.in==='string' && entry.in){ estado=entry.in; cls='neutral'; }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono">${fmtDateShort(date)} · ${date}</td>
+      <td><input type="text" class="mono conex-input" data-date="${date}" data-name="${name}" data-field="in" value="${entry.in||''}" style="width:130px;"></td>
+      <td><input type="text" class="mono conex-input" data-date="${date}" data-name="${name}" data-field="out" value="${entry.out||''}" style="width:130px;"></td>
+      <td><span class="badge ${cls}">${estado}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.conex-input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const {date, name:nm, field} = inp.dataset;
+      const val = inp.value.trim() || null;
+      await setConexEntry(date, nm, field, val);
+      render();
+    });
+  });
+  document.getElementById('colab-add-date').addEventListener('click', async ()=>{
+    const inp = document.getElementById('colab-new-date');
+    if(!inp.value) return;
+    await addConexDate(inp.value);
+    render();
+  });
+}
+
+function renderColabDevoluciones(body, name){
+  const d1 = getDevol1(name);
+  const d2 = getDevol2(name);
+  const mon = getMonitoreo(name);
+  body.innerHTML = `
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Devolución 1er semestre</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <label style="font-size:12px; color:var(--ink-soft);">Fecha de devolución
+            <input type="date" id="devol1-fecha" value="${d1||''}">
+          </label>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Devolución 2</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <label style="font-size:12px; color:var(--ink-soft);">Confección
+            <input type="text" id="devol2-confeccion" value="${d2.confeccion||''}" placeholder="—">
+          </label>
+          <label style="font-size:12px; color:var(--ink-soft);">Fecha
+            <input type="date" id="devol2-fecha" value="${d2.fecha||''}">
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <h3>Monitoreo de escucha</h3>
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <label style="font-size:12px; color:var(--ink-soft);">Fecha del último monitoreo
+          <input type="date" id="monitoreo-fecha" value="${mon.ultimo||''}">
+        </label>
+        ${monitoreoBadge(mon)}
+      </div>
+    </div>
+  `;
+  document.getElementById('devol1-fecha').addEventListener('change', async (e)=>{
+    await setDevol1(name, e.target.value || null);
+    render();
+  });
+  document.getElementById('devol2-confeccion').addEventListener('change', async (e)=>{
+    await setDevol2(name, 'confeccion', e.target.value.trim() || null);
+  });
+  document.getElementById('devol2-fecha').addEventListener('change', async (e)=>{
+    await setDevol2(name, 'fecha', e.target.value || null);
+  });
+  document.getElementById('monitoreo-fecha').addEventListener('change', async (e)=>{
+    APP.overrides.monitoreos[name] = e.target.value || null;
+    await saveOverrides();
+    render();
+  });
+}
+
+/* ================= EXPORTAR PDF ================= */
+function openExportModal(name){
+  const existing = document.getElementById('export-modal-overlay');
+  if(existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'export-modal-overlay';
+  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(20,30,30,0.45); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px;';
+  overlay.innerHTML = `
+    <div class="card" style="max-width:380px; width:100%; margin:0;">
+      <h3>Exportar reporte de ${name}</h3>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin:-6px 0 12px;">Elegí uno o dos meses. El PDF incluye productividad y conexión/desconexión de esos meses.</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:16px;">
+        ${MONTH_KEYS.map(mk=>`
+          <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:6px 8px; cursor:pointer;">
+            <input type="checkbox" class="export-month-check" value="${mk}"> ${MONTH_LABELS[mk]}
+          </label>`).join('')}
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="btn" id="export-cancel">Cancelar</button>
+        <button class="btn primary" id="export-confirm">Generar PDF</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.remove(); });
+  document.getElementById('export-cancel').addEventListener('click', ()=> overlay.remove());
+  document.getElementById('export-confirm').addEventListener('click', ()=>{
+    const checked = Array.from(overlay.querySelectorAll('.export-month-check:checked')).map(c=>c.value);
+    if(checked.length===0){ alert('Elegí al menos un mes.'); return; }
+    if(checked.length>2){ alert('Elegí como máximo dos meses.'); return; }
+    generatePDFReport(name, checked);
+    overlay.remove();
+  });
+}
+
+function generatePDFReport(name, monthKeys){
+  const r = getRoster(name);
+  const win = window.open('', '_blank');
+  if(!win){ alert('El navegador bloqueó la ventana de impresión. Habilitá los pop-ups para exportar el PDF.'); return; }
+
+  const monthBlocks = monthKeys.map(mk=>{
+    const v = getMetric(name, mk);
+    const dates = conexDatesSorted().filter(d=> d.slice(5,7) === String(MONTH_KEYS.indexOf(mk)+1).padStart(2,'0'));
+    const conexRows = dates.map(date=>{
+      const e = getConexEntry(date, name);
+      return `<tr><td>${fmtDateShort(date)} · ${date}</td><td>${e.in||'—'}</td><td>${e.out||'—'}</td></tr>`;
+    }).join('') || `<tr><td colspan="3" style="text-align:center; color:#94A3A0;">Sin registros de conexión para este mes</td></tr>`;
+
+    return `
+      <h2>${MONTH_LABELS[mk]}</h2>
+      <table>
+        <thead><tr><th>ATT</th><th>ACW</th><th>HOLD</th><th>TMO</th><th>Llamados</th><th>% Datos</th><th>G. Digital</th></tr></thead>
+        <tbody><tr>
+          <td>${v.ATT ?? '—'}</td><td>${v.ACW ?? '—'}</td><td>${v.HOLD ?? '—'}</td><td>${v.TMO ?? '—'}</td>
+          <td>${v.Llamados ?? '—'}</td><td>${v.ActDatos!=null ? v.ActDatos+'%' : '—'}</td><td>${v.GDigital ?? '—'}</td>
+        </tr></tbody>
+      </table>
+      <table style="margin-top:10px;">
+        <thead><tr><th style="width:40%;">Fecha</th><th>Entrada</th><th>Salida</th></tr></thead>
+        <tbody>${conexRows}</tbody>
+      </table>
+    `;
+  }).join('<div style="height:22px;"></div>');
+
+  win.document.write(`
+    <!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+    <title>Reporte — ${name}</title>
+    <style>
+      body{ font-family: Arial, Helvetica, sans-serif; color:#1F2A28; padding:36px; max-width:820px; margin:0 auto; }
+      h1{ font-size:20px; margin:0 0 2px; color:#1E6E68; }
+      .meta{ font-size:12.5px; color:#5A6A67; margin-bottom:22px; }
+      .meta span{ margin-right:18px; }
+      h2{ font-size:14px; color:#1E6E68; border-bottom:2px solid #CFE7E2; padding-bottom:4px; margin:18px 0 8px; }
+      table{ width:100%; border-collapse:collapse; font-size:12px; }
+      th, td{ border:1px solid #E2E8E7; padding:6px 8px; text-align:center; }
+      th{ background:#F2F7F6; color:#1E6E68; }
+      .foot{ margin-top:30px; font-size:11px; color:#94A3A0; text-align:center; }
+      @media print{ body{ padding:12mm; } }
+    </style></head>
+    <body>
+      <h1>Reporte de desempeño — ${name}</h1>
+      <div class="meta">
+        <span><b>Horario:</b> ${r.horario||'—'}</span>
+        <span><b>Modalidad:</b> ${r.modalidad||'—'}</span>
+        <span><b>Generado:</b> ${fmtDateLong(TODAY)}</span>
+      </div>
+      ${monthBlocks}
+      <div class="foot">Torre de Control · Reporte generado automáticamente</div>
+      <script>window.onload = () => setTimeout(() => window.print(), 250);<\/script>
+    </body></html>
+  `);
+  win.document.close();
+}
+
+/* ================= PRODUCTIVIDAD ================= */
+function renderProductividad(main){
+  if(!APP.prodMonth) APP.prodMonth = latestMonthWithData();
+  const mk = APP.prodMonth;
+
+  main.innerHTML = `
+    <div class="topbar">
+      <div>
+        <h1>Productividad</h1>
+        <p>Métricas mensuales de atención: ATT, ACW, HOLD, TMO, llamados y gestión digital.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="scroll-x">
+        <div class="seg" id="prod-month-tabs" style="width:max-content;">
+          ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}">${MONTH_LABELS[m].slice(0,3)}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Detalle por persona <span class="sub">${MONTH_LABELS[mk]}</span></h3>
+      <div class="scroll-x">
+      <table>
+        <thead><tr>
+          <th>Nombre</th><th>ATT</th><th>ACW</th><th>HOLD</th><th>TMO</th><th>Llamados</th><th>% Datos</th><th>G. Digital</th><th>Nota</th>
+        </tr></thead>
+        <tbody id="prod-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+    <div class="foot-note">AD = ausente/día libre ese mes. Elegí cualquier mes del año para cargar su productividad, tenga o no datos todavía.</div>
+  `;
+
+  document.getElementById('prod-month-tabs').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-month]');
+    if(!btn) return;
+    APP.prodMonth = btn.dataset.month;
+    render();
+  });
+
+  const tbody = document.getElementById('prod-tbody');
+  NAMES.forEach(name=>{
+    const v = getMetric(name, mk);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name,24)} ${name}</div></td>
+      <td>${metricInputCell(name,mk,'ATT',v.ATT)}</td>
+      <td>${metricInputCell(name,mk,'ACW',v.ACW)}</td>
+      <td>${metricInputCell(name,mk,'HOLD',v.HOLD)}</td>
+      <td>${metricInputCell(name,mk,'TMO',v.TMO)}</td>
+      <td>${metricInputCell(name,mk,'Llamados',v.Llamados)}</td>
+      <td>${metricInputCell(name,mk,'ActDatos',v.ActDatos)}</td>
+      <td>${metricInputCell(name,mk,'GDigital',v.GDigital)}</td>
+      <td>${metricInputCell(name,mk,'Nota',v.Nota)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  tbody.querySelectorAll('.metric-input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const {name:nm, mk:mkk, field} = inp.dataset;
+      let val = inp.value.trim();
+      if(val==='') val = null;
+      else if(['Llamados','ActDatos','GDigital'].includes(field) && val!=='AD' && !isNaN(parseFloat(val.replace(',','.')))){
+        val = parseFloat(val.replace(',','.'));
+      }
+      await setMetric(nm, mkk, field, val);
+      render();
+    });
+  });
+}
+function pctBadge(v){
+  let cls='ok'; if(v<30) cls='bad'; else if(v<60) cls='warn';
+  return `<span class="badge ${cls}">${v.toFixed(0)}%</span>`;
+}
+
+/* ================= MONITOREOS ================= */
+function renderMonitoreos(main){
+  const rows = NAMES.map(n=>({name:n, ...getMonitoreo(n)})).sort((a,b)=>{
+    const da = a.dias==null?-1:a.dias, db=b.dias==null?-1:b.dias;
+    return db-da;
+  });
+  const atrasados = rows.filter(r=>r.dias!=null && r.dias>7);
+
+  main.innerHTML = `
+    <div class="topbar">
+      <div>
+        <h1>Monitoreos y devoluciones</h1>
+        <p>Seguimiento del monitoreo de escucha y de las devoluciones de desempeño por colaborador.</p>
+      </div>
+    </div>
+    ${atrasados.length ? `<div class="banner">${iconAlert()} <span><b>${atrasados.length}</b> colaborador${atrasados.length>1?'es':''} llevan más de 7 días sin monitoreo.</span></div>` : `<div class="banner" style="background:var(--brand-soft); border-color:#CFE7E2; color:var(--brand-dark);">${iconOk()} <span>Todo el equipo está al día con sus monitoreos.</span></div>`}
+    <div class="card" style="margin-bottom:16px;">
+      <h3>Monitoreo de escucha</h3>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>Nombre</th><th>Último monitoreo</th><th>Días desde</th><th>Estado</th><th>Actualizar fecha</th></tr></thead>
+        <tbody id="mon-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Devolución 1er semestre</h3>
+        <div class="scroll-x">
+        <table>
+          <thead><tr><th>Nombre</th><th>Fecha</th></tr></thead>
+          <tbody id="devol1-tbody"></tbody>
+        </table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Devolución 2</h3>
+        <div class="scroll-x">
+        <table>
+          <thead><tr><th>Nombre</th><th>Confección</th><th>Fecha</th></tr></thead>
+          <tbody id="devol2-tbody"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+    <div class="foot-note">Regla de monitoreo: hasta 7 días = al día · 8–14 días = atrasado · más de 14 días = muy atrasado. Hacé clic en un nombre para abrir su ficha completa.</div>
+  `;
+  const tbody = document.getElementById('mon-tbody');
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="name-cell" style="cursor:pointer;" data-open="${r.name}">${avatar(r.name)} ${r.name}</div></td>
+      <td class="mono">${r.ultimo || '—'}</td>
+      <td class="mono">${r.dias!=null? r.dias+' días':'—'}</td>
+      <td>${monitoreoBadge(r)}</td>
+      <td><input type="date" data-name="${r.name}" value="${r.ultimo||''}"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  tbody.querySelectorAll('input[type="date"]').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      APP.overrides.monitoreos[inp.dataset.name] = inp.value;
+      await saveOverrides();
+      render();
+    });
+  });
+
+  const d1tbody = document.getElementById('devol1-tbody');
+  NAMES.forEach(name=>{
+    const d1 = getDevol1(name);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name,24)} ${name}</div></td>
+      <td><input type="date" class="devol1-input" data-name="${name}" value="${d1||''}"></td>
+    `;
+    d1tbody.appendChild(tr);
+  });
+  d1tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  d1tbody.querySelectorAll('.devol1-input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{ await setDevol1(inp.dataset.name, inp.value || null); });
+  });
+
+  const d2tbody = document.getElementById('devol2-tbody');
+  NAMES.forEach(name=>{
+    const d2 = getDevol2(name);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name,24)} ${name}</div></td>
+      <td><input type="text" class="devol2-input" data-name="${name}" data-field="confeccion" value="${d2.confeccion||''}" placeholder="—" style="width:130px;"></td>
+      <td><input type="date" class="devol2-input" data-name="${name}" data-field="fecha" value="${d2.fecha||''}"></td>
+    `;
+    d2tbody.appendChild(tr);
+  });
+  d2tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  d2tbody.querySelectorAll('.devol2-input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{ await setDevol2(inp.dataset.name, inp.dataset.field, inp.value.trim() || null); });
+  });
+}
+function iconOk(){
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>`;
+}
+
+/* ================= CONEXIÓN DIARIA ================= */
+function isoDate(year, month1based, day){
+  return `${year}-${String(month1based).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+function daysOfMonth(year, mk){
+  const monthIndex = MONTH_KEYS.indexOf(mk);
+  const daysInM = new Date(year, monthIndex+1, 0).getDate();
+  const days = [];
+  for(let d=1; d<=daysInM; d++){
+    const dt = new Date(year, monthIndex, d);
+    const dow = dt.getDay();
+    if(dow!==0 && dow!==6) days.push(isoDate(year, monthIndex+1, d));
+  }
+  return days;
+}
+function renderConexion(main){
+  const YEAR = TODAY.getFullYear();
+  if(!APP.conexMonth) APP.conexMonth = MONTH_KEYS[TODAY.getMonth()] || 'ene';
+  const mk = APP.conexMonth;
+  const days = daysOfMonth(YEAR, mk);
+
+  main.innerHTML = `
+    <div class="topbar">
+      <div>
+        <h1>Conexión diaria</h1>
+        <p>Entrada y salida de cada colaborador, día por día. Hacé clic en una celda para cargar el dato.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="scroll-x">
+        <div class="seg" id="conex-month-tabs" style="width:max-content;">
+          ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}">${MONTH_LABELS[m].slice(0,3)}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Planilla de conexión <span class="sub">${MONTH_LABELS[mk]} ${YEAR}</span></h3>
+      <div class="scroll-x">
+      <table class="conex-vertical">
+        <thead>
+          <tr>
+            <th rowspan="2" style="min-width:100px;">Fecha</th>
+            ${NAMES.map(n=>`<th colspan="2" style="cursor:pointer;" data-open="${n}">${n.split(' ')[0]} ${n.split(' ')[1]?.[0]||''}.</th>`).join('')}
+          </tr>
+          <tr>
+            ${NAMES.map(()=>`<th style="min-width:78px;">Entrada</th><th style="min-width:78px;">Salida</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody id="conex-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+    <div class="foot-note">Se muestran los días hábiles (lunes a viernes) del mes elegido. Escribí la hora como hh:mm:ss (ej. 07:00:00) o una nota breve (ej. HO, ausente).</div>
+  `;
+
+  document.getElementById('conex-month-tabs').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-month]');
+    if(!btn) return;
+    APP.conexMonth = btn.dataset.month;
+    render();
+  });
+  main.querySelectorAll('th[data-open]').forEach(th=> th.addEventListener('click', ()=> goToColaborador(th.dataset.open)));
+
+  const tbody = document.getElementById('conex-tbody');
+  days.forEach(date=>{
+    const tr = document.createElement('tr');
+    let cells = `<td class="mono" style="white-space:nowrap;">${fmtDateShort(date)}<br><span style="color:var(--ink-faint); font-size:10.5px;">${date}</span></td>`;
+    NAMES.forEach(name=>{
+      const entry = getConexEntry(date, name);
+      cells += `<td><input type="text" class="mono conex-input" data-date="${date}" data-name="${name}" data-field="in" value="${entry.in||''}" style="width:76px;" placeholder="—"></td>`;
+      cells += `<td><input type="text" class="mono conex-input" data-date="${date}" data-name="${name}" data-field="out" value="${entry.out||''}" style="width:76px;" placeholder="—"></td>`;
+    });
+    tr.innerHTML = cells;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.conex-input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const {date:d, name:nm, field} = inp.dataset;
+      const val = inp.value.trim() || null;
+      await setConexEntry(d, nm, field, val);
+    });
+  });
+}
+
+/* ---------------- init ---------------- */
+(async function init(){
+  document.getElementById('foot-date').textContent = TODAY.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+  await loadOverrides();
+  // reconstruct any dates the user added manually (persisted only in overrides)
+  Object.keys(APP.overrides.conex||{}).forEach(date=>{
+    if(!RAW.conex[date]){
+      RAW.conex[date] = {};
+      NAMES.forEach(n=>{ RAW.conex[date][n] = {in:null, out:null}; });
+    }
+  });
+  render();
+})();
+
+</script>
+</body>
+</html>
