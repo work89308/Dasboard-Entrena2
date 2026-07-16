@@ -204,8 +204,8 @@ tbody tr:hover{ background: #FAFBFB; }
 .conex-input.conex-ok{ background: var(--brand-soft); border-color:#CFE7E2; }
 .conex-input.conex-late{ background: var(--accent-coral-soft); border-color:#F2CCC2; }
 .conex-input.has-tag{ box-shadow: inset 3px 0 0 var(--accent-amber); font-size:11px; }
-.conex-saturday td{ background:#F5F3EC; }
-.conex-saturday td.mono{ font-weight:600; color:var(--ink-soft); }
+.conex-saturday td{ background:var(--brand-soft); }
+.conex-saturday td.mono{ font-weight:600; color:var(--brand-dark); }
 
 /* podium (ranking del equipo) */
 .podium-row{ display:flex; align-items:center; gap:8px; font-size:12px; padding:5px 0; border-bottom:1px dashed var(--line); }
@@ -1208,7 +1208,7 @@ function renderColabConexion(body, name){
     const isSaturday = new Date(date+'T00:00:00').getDay()===6;
     if(isSaturday) tr.className = 'conex-saturday';
     tr.innerHTML = `
-      <td class="mono">${fmtDateShort(date)} · ${date}${isSaturday ? ' · guardia' : ''}</td>
+      <td class="mono">${fmtDateShort(date)} · ${date}</td>
       <td><input type="text" class="mono conex-input${hasConexTag(entry.in)?' has-tag':''}" data-date="${date}" data-name="${name}" data-field="in" value="${fmtTimeShort(entry.in)}" style="width:130px;"></td>
       <td><input type="text" class="mono conex-input${hasConexTag(entry.out)?' has-tag':''}" data-date="${date}" data-name="${name}" data-field="out" value="${fmtTimeShort(entry.out)}" style="width:130px;"></td>
       <td><span class="badge ${cls}">${estado}</span></td>
@@ -1687,7 +1687,7 @@ function renderConexion(main){
     const isSaturday = new Date(date+'T00:00:00').getDay()===6;
     const tr = document.createElement('tr');
     if(isSaturday) tr.className = 'conex-saturday';
-    let cells = `<td class="mono" style="white-space:nowrap;">${isSaturday ? `<b>${fmtDateCompact(date)}</b> · guardia` : fmtDateCompact(date)}</td>`;
+    let cells = `<td class="mono" style="white-space:nowrap;">${isSaturday ? `<b>${fmtDateCompact(date)}</b>` : fmtDateCompact(date)}</td>`;
     NAMES.forEach(name=>{
       const entry = getConexEntry(date, name);
       const inTag = hasConexTag(entry.in) ? ' has-tag' : '';
