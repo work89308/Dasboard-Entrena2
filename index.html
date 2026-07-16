@@ -279,9 +279,16 @@ select:focus, input:focus{ border-color: var(--brand); }
   #print-area h2{ font-size:14px; color:#1E6E68; border-bottom:2px solid #CFE7E2; padding-bottom:4px; margin:18px 0 8px; }
   #print-area .meta{ font-size:12.5px; color:#5A6A67; margin-bottom:22px; }
   #print-area .meta span{ margin-right:18px; }
-  #print-area table{ width:100%; border-collapse:collapse; font-size:12px; margin-top:0; }
-  #print-area th, #print-area td{ border:1px solid #E2E8E7; padding:6px 8px; text-align:center; }
+  #print-area .tbl-wrap{ border:1px solid #DCE6E4; border-radius:12px; overflow:hidden; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  #print-area .tbl-wrap + .tbl-wrap{ margin-top:10px; }
+  #print-area table{ width:100%; border-collapse:collapse; font-size:12px; margin:0; }
+  #print-area th, #print-area td{ border:none; border-bottom:1px solid #E2E8E7; padding:7px 8px; text-align:center; }
+  #print-area tr:last-child td{ border-bottom:none; }
   #print-area th{ background:#F2F7F6; color:#1E6E68; }
+  #print-area .tbl-metrics th{ background:#1E6E68; color:#fff; font-weight:600; }
+  #print-area .tbl-metrics td{ background:#EEF3F2; color:#1F2A28; }
+  #print-area td.conex-ok{ background:#DCF3EC; color:#146356; font-weight:600; }
+  #print-area td.conex-late{ background:#FBE0DA; color:#9A3B27; font-weight:600; }
   #print-area .foot{ margin-top:30px; font-size:11px; color:#94A3A0; text-align:center; }
 }
 </style>
@@ -1296,12 +1303,15 @@ function generatePDFReport(name, monthKeys){
     const dates = conexDatesSorted().filter(d=> d.slice(5,7) === String(MONTH_KEYS.indexOf(mk)+1).padStart(2,'0'));
     const conexRows = dates.map(date=>{
       const e = getConexEntry(date, name);
-      return `<tr><td>${fmtDateCompact(date)}</td><td>${fmtTimeShort(e.in)||'—'}</td><td>${fmtTimeShort(e.out)||'—'}</td></tr>`;
+      const inCls = conexColorClass(e.colorIn);
+      const outCls = conexColorClass(e.colorOut);
+      return `<tr><td>${fmtDateCompact(date)}</td><td class="${inCls}">${fmtTimeShort(e.in)||'—'}</td><td class="${outCls}">${fmtTimeShort(e.out)||'—'}</td></tr>`;
     }).join('') || `<tr><td colspan="3" style="text-align:center; color:#94A3A0;">Sin registros de conexión para este mes</td></tr>`;
 
     return `
       <h2>${MONTH_LABELS[mk]}</h2>
-      <table>
+      <div class="tbl-wrap">
+      <table class="tbl-metrics">
         <thead><tr><th>ATT</th><th>ACW</th><th>HOLD</th><th>TMO</th><th>Llamados</th><th>% Datos</th><th>G. Digital</th></tr></thead>
         <tbody><tr>
           <td>${v.ATT && v.ATT!=='AD' ? fmtTimeShort(v.ATT) : (v.ATT ?? '—')}</td>
@@ -1311,10 +1321,13 @@ function generatePDFReport(name, monthKeys){
           <td>${v.Llamados ?? '—'}</td><td>${v.ActDatos!=null ? v.ActDatos+'%' : '—'}</td><td>${v.GDigital ?? '—'}</td>
         </tr></tbody>
       </table>
-      <table style="margin-top:10px;">
+      </div>
+      <div class="tbl-wrap">
+      <table class="tbl-conex">
         <thead><tr><th style="width:40%;">Fecha</th><th>Entrada</th><th>Salida</th></tr></thead>
         <tbody>${conexRows}</tbody>
       </table>
+      </div>
     `;
   }).join('<div style="height:22px;"></div>');
 
