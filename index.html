@@ -170,6 +170,8 @@ td{ padding: 10px 10px; border-bottom:1px solid #EEF2F2; vertical-align:middle; 
 tr:last-child td{ border-bottom:none; }
 tbody tr:hover{ background: #FAFBFB; }
 .name-cell{ display:flex; align-items:center; gap:9px; }
+.name-edit-btn{ border:none; background:none; cursor:pointer; color:var(--ink-faint); padding:2px 4px; margin-left:auto; flex-shrink:0; display:flex; align-items:center; }
+.name-edit-btn:hover{ color:var(--brand); }
 .avatar{
   width:28px;height:28px;border-radius:50%; flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
@@ -888,7 +890,9 @@ function renderEquipo(main){
       <td>
         <div class="name-cell">
           <span style="cursor:pointer; display:flex; align-items:center; gap:9px;" data-open="${name}">${avatar(name)} <span>${name}</span></span>
-          <button class="name-edit-btn" data-name="${name}" title="Renombrar" style="border:none; background:none; cursor:pointer; color:var(--ink-faint); font-size:13px; padding:2px 4px; line-height:1;">✏️</button>
+          <button class="name-edit-btn" data-name="${name}" title="Renombrar">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
         </div>
       </td>
       <td>${horarioSelect(name, r.horario)}</td>
