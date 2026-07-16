@@ -1503,7 +1503,7 @@ function renderMonitoreos(main){
         <h3>Devolución 1er semestre</h3>
         <div class="scroll-x">
         <table>
-          <thead><tr><th>Nombre</th><th>Fecha</th></tr></thead>
+          <thead><tr><th style="width:55%;">Nombre</th><th>Fecha</th></tr></thead>
           <tbody id="devol1-tbody"></tbody>
         </table>
         </div>
@@ -1512,7 +1512,7 @@ function renderMonitoreos(main){
         <h3>Devolución 2</h3>
         <div class="scroll-x">
         <table>
-          <thead><tr><th>Nombre</th><th>Confección</th><th>Fecha</th></tr></thead>
+          <thead><tr><th style="width:55%;">Nombre</th><th>Fecha</th></tr></thead>
           <tbody id="devol2-tbody"></tbody>
         </table>
         </div>
@@ -1587,7 +1587,6 @@ function renderMonitoreos(main){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name,24)} ${name}</div></td>
-      <td><input type="text" class="devol2-input" data-name="${name}" data-field="confeccion" value="${d2.confeccion||''}" placeholder="—" style="width:130px;"></td>
       <td><input type="date" class="devol2-input" data-name="${name}" data-field="fecha" value="${d2.fecha||''}"></td>
     `;
     d2tbody.appendChild(tr);
