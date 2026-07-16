@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Torre de Control · Equipo Atención Telefónica</title>
+<title>Equipo Entrenados · Equipo Atención Telefónica</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -300,7 +300,7 @@ select:focus, input:focus{ border-color: var(--brand); }
     <div class="brand">
       <div class="brand-mark">AT</div>
       <div class="brand-text">
-        <b>Torre de Control</b>
+        <b>Equipo Entrenados</b>
         <span>Equipo Atención Telefónica</span>
       </div>
     </div>
@@ -348,7 +348,7 @@ select:focus, input:focus{ border-color: var(--brand); }
 </script>
 <script>
 /* =========================================================
-   Torre de Control — Equipo Atención Telefónica
+   Equipo Entrenados — Equipo Atención Telefónica
    ========================================================= */
 
 const RAW = JSON.parse(document.getElementById('team-data').textContent);
@@ -371,7 +371,7 @@ const APP = {
   conexDateIdx: null,
   colaborador: null,
   colabTab: 'productividad',
-  overrides: { roster:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, inbox:{} },
+  overrides: { roster:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, inbox:{}, nameRenames:{} },
 };
 const METRIC_FIELDS = ['ATT','ACW','HOLD','TMO','Llamados','ActDatos','GDigital','Nota'];
 const METRIC_LABELS = {ATT:'ATT', ACW:'ACW', HOLD:'HOLD', TMO:'TMO', Llamados:'Llamados', ActDatos:'% Datos', GDigital:'G. Digital', Nota:'Nota'};
@@ -385,7 +385,7 @@ async function loadOverrides(){
       const res = await window.storage.get('overrides', false);
       if(res && res.value){
         const parsed = JSON.parse(res.value);
-        APP.overrides = Object.assign({roster:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},inbox:{}}, parsed);
+        APP.overrides = Object.assign({roster:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},inbox:{},nameRenames:{}}, parsed);
       }
       return;
     }
@@ -394,7 +394,7 @@ async function loadOverrides(){
     const raw = localStorage.getItem(LOCAL_KEY);
     if(raw){
       const parsed = JSON.parse(raw);
-      APP.overrides = Object.assign({roster:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},inbox:{}}, parsed);
+      APP.overrides = Object.assign({roster:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},inbox:{},nameRenames:{}}, parsed);
     }
   }catch(e){ console.warn('No se pudieron cargar los datos guardados', e); }
 }
@@ -475,6 +475,50 @@ function getRoster(name){
   const base = RAW.roster.find(r=>r.name===name) || {};
   const ov = APP.overrides.roster[name] || {};
   return Object.assign({name, tarea:'—'}, base, ov);
+}
+function rekeyProp(obj, oldKey, newKey){
+  if(obj && Object.prototype.hasOwnProperty.call(obj, oldKey)){
+    obj[newKey] = obj[oldKey];
+    delete obj[oldKey];
+  }
+}
+function migrateName(oldName, newName){
+  if(!oldName || !newName || oldName===newName) return;
+  const rItem = RAW.roster.find(r=>r.name===oldName);
+  if(rItem) rItem.name = newName;
+  rekeyProp(RAW.prod_check, oldName, newName);
+  rekeyProp(RAW.devoluciones, oldName, newName);
+  rekeyProp(RAW.monitoreos, oldName, newName);
+  MONTH_KEYS.forEach(mk=>{ if(RAW.monthly_metrics[mk]) rekeyProp(RAW.monthly_metrics[mk], oldName, newName); });
+  Object.keys(RAW.conex).forEach(date=> rekeyProp(RAW.conex[date], oldName, newName));
+
+  rekeyProp(APP.overrides.roster, oldName, newName);
+  rekeyProp(APP.overrides.monitoreos, oldName, newName);
+  rekeyProp(APP.overrides.prod_check, oldName, newName);
+  MONTH_KEYS.forEach(mk=>{ if(APP.overrides.metrics[mk]) rekeyProp(APP.overrides.metrics[mk], oldName, newName); });
+  Object.keys(APP.overrides.conex||{}).forEach(date=> rekeyProp(APP.overrides.conex[date], oldName, newName));
+  rekeyProp(APP.overrides.devol1, oldName, newName);
+  rekeyProp(APP.overrides.devol2, oldName, newName);
+  rekeyProp(APP.overrides.inbox, oldName, newName);
+
+  if(COLOR[oldName]!=null){ COLOR[newName] = COLOR[oldName]; delete COLOR[oldName]; }
+  const idx = NAMES.indexOf(oldName);
+  if(idx!==-1) NAMES[idx] = newName;
+  if(APP.colaborador===oldName) APP.colaborador = newName;
+}
+function applyStoredRenames(){
+  Object.entries(APP.overrides.nameRenames || {}).forEach(([original, current])=> migrateName(original, current));
+}
+async function renamePerson(currentName, newNameRaw){
+  const newName = (newNameRaw || '').trim();
+  if(!newName || newName===currentName) return false;
+  if(NAMES.includes(newName)){ alert('Ya existe una persona con ese nombre.'); return false; }
+  if(!APP.overrides.nameRenames) APP.overrides.nameRenames = {};
+  const originalKey = Object.keys(APP.overrides.nameRenames).find(k=> APP.overrides.nameRenames[k]===currentName) || currentName;
+  APP.overrides.nameRenames[originalKey] = newName;
+  migrateName(currentName, newName);
+  await saveOverrides();
+  return true;
 }
 function getMonitoreo(name){
   const ultimo = APP.overrides.monitoreos[name] || RAW.monitoreos[name] || null;
@@ -775,7 +819,7 @@ function renderResumen(main){
     <h3 style="font-family:var(--font-display); font-size:15px; color:var(--brand-dark); margin:22px 0 12px 2px;">Fichas rápidas del equipo</h3>
     <div class="grid" id="resumen-cards" style="grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));"></div>
 
-    <div class="foot-note">Torre de Control · Datos importados desde planilla de seguimiento 2026 · Hacé clic en una persona para ver su ficha completa</div>
+    <div class="foot-note">Equipo Entrenados · Datos importados desde planilla de seguimiento 2026 · Hacé clic en una persona para ver su ficha completa</div>
   `;
 
   // ---- populate DOM ----
@@ -861,7 +905,7 @@ function renderEquipo(main){
     <div class="topbar">
       <div>
         <h1>Equipo</h1>
-        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Hacé clic en un dato para editarlo.</p>
+        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Hacé clic en un dato para editarlo. Usá el lápiz junto al nombre para renombrar a una persona (por ejemplo, al cambiar de integrantes).</p>
       </div>
     </div>
     <div class="card">
@@ -887,7 +931,12 @@ function renderEquipo(main){
     const devol = getDevol1(name);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name)} <span>${name}</span></div></td>
+      <td>
+        <div class="name-cell">
+          <span style="cursor:pointer; display:flex; align-items:center; gap:9px;" data-open="${name}">${avatar(name)} <span>${name}</span></span>
+          <button class="name-edit-btn" data-name="${name}" title="Renombrar" style="border:none; background:none; cursor:pointer; color:var(--ink-faint); font-size:13px; padding:2px 4px; line-height:1;">✏️</button>
+        </div>
+      </td>
       <td>${horarioSelect(name, r.horario)}</td>
       <td>${modalidadSelect(name, r.modalidad)}</td>
       <td><span class="editable" data-field="tarea" data-name="${name}">${r.tarea||'—'}</span></td>
@@ -899,6 +948,16 @@ function renderEquipo(main){
   });
   tbody.querySelectorAll('[data-open]').forEach(el=>{
     el.addEventListener('click', ()=> goToColaborador(el.dataset.open));
+  });
+  tbody.querySelectorAll('.name-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const name = btn.dataset.name;
+      const nuevo = prompt('Nuevo nombre para "'+name+'":', name);
+      if(nuevo==null) return;
+      const ok = await renamePerson(name, nuevo);
+      if(ok) render();
+    });
   });
 
   // inline edit for text fields (tarea/nota only — horario y modalidad usan <select>)
@@ -1345,7 +1404,7 @@ function generatePDFReport(name, monthKeys){
       <span><b>Generado:</b> ${fmtDateLong(TODAY)}</span>
     </div>
     ${monthBlocks}
-    <div class="foot">Torre de Control · Reporte generado automáticamente</div>
+    <div class="foot">Equipo Entrenados · Reporte generado automáticamente</div>
   `;
   // Se imprime en la misma pestaña (sin abrir ventana nueva) para que funcione
   // también dentro de vistas con ventanas emergentes bloqueadas. El usuario
@@ -1689,6 +1748,7 @@ function renderConexion(main){
 (async function init(){
   document.getElementById('foot-date').textContent = TODAY.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
   await loadOverrides();
+  applyStoredRenames();
   // reconstruct any dates the user added manually (persisted only in overrides)
   Object.keys(APP.overrides.conex||{}).forEach(date=>{
     if(!RAW.conex[date]){
