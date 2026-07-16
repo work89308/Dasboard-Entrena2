@@ -253,6 +253,8 @@ select:focus, input:focus{ border-color: var(--brand); }
 }
 .banner svg{ width:18px;height:18px; flex-shrink:0; }
 .banner b{ font-weight:700; }
+.banner-close{ margin-left:auto; background:none; border:none; cursor:pointer; color:inherit; opacity:0.6; font-size:16px; line-height:1; padding:2px 6px; flex-shrink:0; }
+.banner-close:hover{ opacity:1; }
 
 /* scrollable panel for conex timeline */
 .scroll-x{ overflow-x:auto; }
@@ -371,6 +373,7 @@ const APP = {
   conexDateIdx: null,
   colaborador: null,
   colabTab: 'productividad',
+  bannerDismissed: { resumen:false, monitoreos:false },
   overrides: { roster:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, inbox:{}, nameRenames:{} },
 };
 const METRIC_FIELDS = ['ATT','ACW','HOLD','TMO','Llamados','ActDatos','GDigital','Nota'];
@@ -597,6 +600,7 @@ function inboxDots(name, check){
       let bg = '#E7ECEC', title='Sin dato';
       if(v==='si'){ bg='#3FAE96'; title='Realizada'; }
       else if(v==='no'){ bg='#D65B45'; title='No realizada'; }
+      else if(v==='home'){ bg='#9EC8F5'; title='Home Office'; }
       return `<div class="inbox-dot" data-name="${name}" data-month="${mk}" title="${MONTH_LABELS[mk]}: ${title}" style="background:${bg};"></div>`;
     }).join('')}
   </div>`;
@@ -614,48 +618,10 @@ function latestMonthWithData(){
   }
   return 'ene';
 }
-function monthsWithData(){
-  return MONTH_KEYS.filter(monthHasData);
-}
 function conexDatesSorted(){
   return Object.keys(RAW.conex).sort();
 }
 /* ---------------- gráficos propios (SVG/CSS puro, no dependen de internet) ---------------- */
-function evolChartSvg(months, callSeries, tmoSeries){
-  const W=600,H=200,padL=34,padR=10,padT=10,padB=26;
-  const innerW = W-padL-padR, innerH = H-padT-padB;
-  const n = months.length;
-  if(n===0) return `<div class="empty" style="padding:24px; text-align:center; color:var(--ink-faint); font-size:12.5px;">Todavía no hay datos de productividad cargados.</div>`;
-  const maxCall = Math.max(1, ...callSeries.map(v=>v||0));
-  const maxTmo = Math.max(1, ...tmoSeries.filter(v=>v!=null));
-  const slot = innerW/n;
-  const barW = Math.min(30, slot*0.5);
-  let bars='', linePts=[], dots='', labels='';
-  months.forEach((m,i)=>{
-    const cx = padL + slot*i + slot/2;
-    labels += `<text x="${cx}" y="${H-8}" text-anchor="middle" font-size="10.5" font-family="Inter" fill="#4E6367">${MONTH_LABELS[m].slice(0,3)}</text>`;
-    const cv = callSeries[i];
-    if(cv!=null){
-      const bh = (cv/maxCall)*innerH;
-      bars += `<rect x="${cx-barW/2}" y="${padT+innerH-bh}" width="${barW}" height="${bh}" rx="4" fill="#CFE7E2"/>`;
-    }
-    const tv = tmoSeries[i];
-    if(tv!=null){
-      const ty = padT + innerH - (tv/maxTmo)*innerH;
-      linePts.push(`${cx},${ty}`);
-      dots += `<circle cx="${cx}" cy="${ty}" r="3.5" fill="#1E6E68"/>`;
-    }
-  });
-  const line = linePts.length>1 ? `<polyline points="${linePts.join(' ')}" fill="none" stroke="#1E6E68" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : '';
-  return `
-    <div style="display:flex; gap:16px; font-size:11px; color:var(--ink-soft); margin-bottom:6px;">
-      <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#CFE7E2;display:inline-block;"></span>Llamados totales</span>
-      <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#1E6E68;display:inline-block;"></span>TMO promedio (min)</span>
-    </div>
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
-      ${bars}${line}${dots}${labels}
-    </svg>`;
-}
 function rankBarsHtml(rows, unit){
   if(!rows.length) return `<div class="empty" style="padding:16px 0; text-align:center; color:var(--ink-faint); font-size:12.5px;">Sin datos cargados aún.</div>`;
   const max = Math.max(1, ...rows.map(r=>r.v||0));
@@ -737,7 +703,7 @@ function renderResumen(main){
   const curMk = MONTH_KEYS[TODAY.getMonth()];
   const inboxVals = NAMES.map(n=> getInboxCheck(n)[curMk]);
   const inboxSi = inboxVals.filter(v=>v==='si').length;
-  const inboxPend = NAMES.length - inboxVals.filter(v=>v==='si'||v==='no').length;
+  const inboxPend = NAMES.length - inboxVals.filter(v=>v==='si'||v==='no'||v==='home').length;
 
   main.innerHTML = `
     <div class="topbar">
@@ -750,10 +716,11 @@ function renderResumen(main){
       </div>
     </div>
 
-    ${atrasados.length ? `
+    ${atrasados.length && !APP.bannerDismissed.resumen ? `
     <div class="banner">
       ${iconAlert()}
       <span><b>${atrasados.length} colaborador${atrasados.length>1?'es':''}</b> con monitoreo atrasado hace más de 7 días. Revisá la sección Monitoreos.</span>
+      <button class="banner-close" data-banner="resumen" title="Cerrar">✕</button>
     </div>` : ''}
 
     <div class="grid grid-kpi">
@@ -785,8 +752,8 @@ function renderResumen(main){
 
     <div class="grid grid-2">
       <div class="card">
-        <h3>Evolución mensual <span class="sub">TMO promedio &amp; llamados totales</span></h3>
-        <div id="chart-evol"></div>
+        <h3>Ranking gestión digital <span class="sub">${MONTH_LABELS[mk]}</span></h3>
+        <div id="chart-rank"></div>
       </div>
       <div class="card">
         <h3>Estado de monitoreos</h3>
@@ -799,11 +766,6 @@ function renderResumen(main){
             </div>`).join('') || '<div class="empty" style="padding:10px 0;">Sin atrasos 🎉</div>'}
         </div>
       </div>
-    </div>
-
-    <div class="card" style="margin-top:16px;">
-      <h3>Ranking gestión digital <span class="sub">${MONTH_LABELS[mk]}</span></h3>
-      <div id="chart-rank"></div>
     </div>
 
     <div class="card" style="margin-top:16px;">
@@ -869,21 +831,6 @@ function renderResumen(main){
   });
 
   // ---- charts (best-effort; never block the rest of the page) ----
-  const months = monthsWithData();
-  const tmoSeries = months.map(mk2=>{
-    const vals = NAMES.map(n=>timeToMinutes(getMetric(n,mk2).TMO)).filter(v=>v!=null);
-    return vals.length ? +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : null;
-  });
-  const callSeries = months.map(mk2=>{
-    const vals = NAMES.map(n=>{
-      const v = getMetric(n,mk2).Llamados;
-      return (typeof v === 'number') ? v : null;
-    }).filter(v=>v!=null);
-    return vals.length ? vals.reduce((a,b)=>a+b,0) : null;
-  });
-
-  document.getElementById('chart-evol').innerHTML = evolChartSvg(months, callSeries, tmoSeries);
-
   document.getElementById('chart-donut').innerHTML = donutSvg([
     {label:'Al día', val: monitoreoRows.filter(r=>r.dias!=null && r.dias<=7).length, color:'#3FAE96'},
     {label:'Atrasado', val: monitoreoRows.filter(r=>r.dias!=null && r.dias>7 && r.dias<=14).length, color:'#E4A121'},
@@ -893,6 +840,13 @@ function renderResumen(main){
   const rankSorted = NAMES.map(n=>({name:n, v: (metrics[n] && typeof metrics[n].GDigital==='number') ? metrics[n].GDigital : 0}))
     .sort((a,b)=>b.v-a.v);
   document.getElementById('chart-rank').innerHTML = rankBarsHtml(rankSorted, '');
+
+  main.querySelectorAll('.banner-close').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      APP.bannerDismissed[btn.dataset.banner] = true;
+      render();
+    });
+  });
 }
 
 function iconAlert(){
@@ -1513,7 +1467,7 @@ function renderMonitoreos(main){
         <p>Seguimiento del monitoreo de escucha y de las devoluciones de desempeño por colaborador.</p>
       </div>
     </div>
-    ${atrasados.length ? `<div class="banner">${iconAlert()} <span><b>${atrasados.length}</b> colaborador${atrasados.length>1?'es':''} llevan más de 7 días sin monitoreo.</span></div>` : `<div class="banner" style="background:var(--brand-soft); border-color:#CFE7E2; color:var(--brand-dark);">${iconOk()} <span>Todo el equipo está al día con sus monitoreos.</span></div>`}
+    ${atrasados.length && !APP.bannerDismissed.monitoreos ? `<div class="banner">${iconAlert()} <span><b>${atrasados.length}</b> colaborador${atrasados.length>1?'es':''} llevan más de 7 días sin monitoreo.</span><button class="banner-close" data-banner="monitoreos" title="Cerrar">✕</button></div>` : (!atrasados.length ? `<div class="banner" style="background:var(--brand-soft); border-color:#CFE7E2; color:var(--brand-dark);">${iconOk()} <span>Todo el equipo está al día con sus monitoreos.</span></div>` : '')}
     <div class="card" style="margin-bottom:16px;">
       <h3>Monitoreo de escucha</h3>
       <div class="scroll-x">
@@ -1535,6 +1489,7 @@ function renderMonitoreos(main){
       <div style="margin-top:10px; display:flex; gap:14px; font-size:11px; color:var(--ink-soft);">
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3FAE96;display:inline-block;"></span>Realizada</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#D65B45;display:inline-block;"></span>No realizada</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#9EC8F5;display:inline-block;"></span>Home Office</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#E7ECEC;display:inline-block;"></span>Sin dato</span>
       </div>
     </div>
@@ -1599,7 +1554,8 @@ function renderMonitoreos(main){
       const cur = getInboxCheck(name)[mkey];
       let next;
       if(cur==='si') next='no';
-      else if(cur==='no') next=null;
+      else if(cur==='no') next='home';
+      else if(cur==='home') next=null;
       else next='si';
       await setInboxCheck(name, mkey, next);
       render();
@@ -1635,6 +1591,13 @@ function renderMonitoreos(main){
   d2tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
   d2tbody.querySelectorAll('.devol2-input').forEach(inp=>{
     inp.addEventListener('change', async ()=>{ await setDevol2(inp.dataset.name, inp.dataset.field, inp.value.trim() || null); });
+  });
+
+  main.querySelectorAll('.banner-close').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      APP.bannerDismissed[btn.dataset.banner] = true;
+      render();
+    });
   });
 }
 function iconOk(){
