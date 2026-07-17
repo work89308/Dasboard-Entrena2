@@ -277,6 +277,14 @@ tbody tr:hover{ background: #FAFBFB; }
 .pill.palomitas{ background:#F3EEFB; color:#6C4FA8; border-color:#E2D6F5;}
 .pill.mayo{ background:#FBEEEE; color:#B0483F; border-color:#F2D6D3;}
 .pill.other{ background:#F5F1E9; color:#8A6B1F; border-color:#EBE0C8;}
+.pill.tarea-1{ background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2; }
+.pill.tarea-2{ background:#E3F5EE; color:#1F8F6D; border-color:#C9E9DC; }
+.pill.tarea-3{ background:#EFF4FB; color:var(--accent-blue); border-color:#D9E6F5; }
+.pill.tarea-4{ background:#F3EEFB; color:#6C4FA8; border-color:#E2D6F5; }
+.pill.tarea-5{ background: var(--accent-amber-soft); color:#8A6B1F; border-color:#F2E2B8; }
+.pill.tarea-6{ background: var(--accent-coral-soft); color:#B0483F; border-color:#F2D6D3; }
+.pill.tarea-7{ background:#EEF2F5; color:#4C7A9E; border-color:#DCE6ED; }
+.pill.tarea-8{ background:#F5F1E9; color:#8A6B1F; border-color:#EBE0C8; }
 .horario-select{ font-family:var(--font-mono); font-size:12.5px; padding:4px 8px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); }
 .conex-vertical th{ position:sticky; top:0; background:#F2F5F5; z-index:1; }
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
@@ -1172,7 +1180,7 @@ function renderEquipo(main){
       <table>
         <thead>
           <tr>
-            <th>Nombre</th><th>Horario <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Modalidad <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Tarea / nota</th>
+            <th>Nombre</th><th>Horario <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Modalidad <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Tarea</th>
             <th>Productividad ${new Date().getFullYear()}</th><th>Último monitoreo</th><th>Devolución 1er sem.</th>
           </tr>
         </thead>
@@ -1294,10 +1302,15 @@ function horarioSelect(name, current, mk){
   </select>`;
 }
 const TAREA_OPTIONS = ['Atención Telefónica','Comunidad fija y Whatsapp','Respuesta Mail - Apoyo','Redes','Carga de solicitudes','Línea 7075','Planes JS','Admin. Bandejas'];
+function tareaClass(t){
+  const idx = TAREA_OPTIONS.indexOf(t);
+  return idx>=0 ? 'tarea-'+(idx+1) : 'other';
+}
 function tareaSelect(name, current){
   const val = (current && current!=='—') ? current : '';
   const list = (val && !TAREA_OPTIONS.includes(val)) ? [...TAREA_OPTIONS, val] : TAREA_OPTIONS;
-  return `<select data-field="tarea" data-name="${name}" class="horario-select" style="max-width:190px;">
+  const cls = tareaClass(val);
+  return `<select data-field="tarea" data-name="${name}" class="pill ${cls}" style="border:1px solid var(--line);">
     <option value="" ${!val?'selected':''}>—</option>
     ${list.map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
