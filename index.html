@@ -142,8 +142,10 @@ body.visitor-mode .name-edit-btn,
 body.visitor-mode select[data-field],
 body.visitor-mode .dot-cell,
 body.visitor-mode .conex-input,
+body.visitor-mode .metric-input,
 body.visitor-mode .inbox-dot,
 body.visitor-mode #monitoreo-fecha,
+body.visitor-mode #mon-tbody input[type="date"],
 body.visitor-mode #devol1-fecha,
 body.visitor-mode #devol2-fecha,
 body.visitor-mode #devol2-confeccion,
@@ -549,7 +551,7 @@ async function saveOverrides(){
 }
 
 /* ---------------- auth ---------------- */
-const ADMIN_EMAIL = 'david77870@gmail.com';
+const ADMIN_EMAIL = 'work89308@gmail.com';
 
 function initAuthGate(){
   return new Promise((resolve)=>{
@@ -1425,6 +1427,7 @@ function renderColabProductividad(body, name){
   });
   tbody.querySelectorAll('.metric-input').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
+      if(!APP.isAdmin) return;
       const {name:nm, mk, field} = inp.dataset;
       let val = inp.value.trim();
       if(val==='') val = null;
@@ -1716,6 +1719,7 @@ function renderProductividad(main){
   tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
   tbody.querySelectorAll('.metric-input').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
+      if(!APP.isAdmin) return;
       const {name:nm, mk:mkk, field} = inp.dataset;
       let val = inp.value.trim();
       if(val==='') val = null;
