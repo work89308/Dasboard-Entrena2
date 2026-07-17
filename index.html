@@ -133,6 +133,7 @@ body{
 .grid{ display:grid; gap:16px; }
 .grid-kpi{ grid-template-columns: repeat(4, 1fr); margin-bottom:18px; }
 .grid-2{ grid-template-columns: 1.4fr 1fr; }
+.grid-3{ grid-template-columns: repeat(3, 1fr); }
 .card{
   background: var(--bg-panel); border:1px solid var(--line); border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 20px;
@@ -204,7 +205,7 @@ tbody tr:hover{ background: #FAFBFB; }
 .conex-input.conex-ok{ background: var(--brand-soft); border-color:#CFE7E2; }
 .conex-input.conex-late{ background: var(--accent-coral-soft); border-color:#F2CCC2; }
 .conex-input.has-tag{ box-shadow: inset 3px 0 0 var(--accent-amber); font-size:11px; }
-.conex-saturday td{ background:var(--brand-soft); }
+.conex-saturday td{ background:#F2F5F5; }
 .conex-saturday td.mono{ font-weight:600; color:var(--brand-dark); }
 
 /* podium (ranking del equipo) */
@@ -274,6 +275,7 @@ select:focus, input:focus{ border-color: var(--brand); }
 @media (max-width: 980px){
   .grid-kpi{ grid-template-columns: repeat(2,1fr); }
   .grid-2{ grid-template-columns: 1fr; }
+  .grid-3{ grid-template-columns: 1fr; }
   .sidebar{ display:none; }
   .main{ padding:18px; }
 }
@@ -610,7 +612,7 @@ function inboxDots(name, check){
       let bg = '#E7ECEC', title='Sin dato';
       if(v==='si'){ bg='#3FAE96'; title='Realizada'; }
       else if(v==='no'){ bg='#D65B45'; title='No realizada'; }
-      else if(v==='home'){ bg='#9EC8F5'; title='Home Office'; }
+      else if(v==='home'){ bg='#3A6EA5'; title='Home Office'; }
       return `<div class="inbox-dot" data-name="${name}" data-month="${mk}" title="${MONTH_LABELS[mk]}: ${title}" style="background:${bg};"></div>`;
     }).join('')}
   </div>`;
@@ -1239,7 +1241,16 @@ function renderColabDevoluciones(body, name){
   const d2 = getDevol2(name);
   const mon = getMonitoreo(name);
   body.innerHTML = `
-    <div class="grid grid-2">
+    <div class="grid grid-3">
+      <div class="card">
+        <h3>Monitoreo de escucha</h3>
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <label style="font-size:12px; color:var(--ink-soft);">Fecha del último monitoreo
+            <input type="date" id="monitoreo-fecha" value="${mon.ultimo||''}">
+          </label>
+          ${monitoreoBadge(mon)}
+        </div>
+      </div>
       <div class="card">
         <h3>Devolución 1er semestre</h3>
         <div style="display:flex; flex-direction:column; gap:10px;">
@@ -1258,15 +1269,6 @@ function renderColabDevoluciones(body, name){
             <input type="date" id="devol2-fecha" value="${d2.fecha||''}">
           </label>
         </div>
-      </div>
-    </div>
-    <div class="card" style="margin-top:16px;">
-      <h3>Monitoreo de escucha</h3>
-      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-        <label style="font-size:12px; color:var(--ink-soft);">Fecha del último monitoreo
-          <input type="date" id="monitoreo-fecha" value="${mon.ultimo||''}">
-        </label>
-        ${monitoreoBadge(mon)}
       </div>
     </div>
   `;
@@ -1503,7 +1505,7 @@ function renderMonitoreos(main){
       <div style="margin-top:10px; display:flex; gap:14px; font-size:11px; color:var(--ink-soft);">
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3FAE96;display:inline-block;"></span>Realizada</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#D65B45;display:inline-block;"></span>No realizada</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#9EC8F5;display:inline-block;"></span>Home Office</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3A6EA5;display:inline-block;"></span>Home Office</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#E7ECEC;display:inline-block;"></span>Sin dato</span>
       </div>
     </div>
