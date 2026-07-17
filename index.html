@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Equipo Entrenados · Equipo Atención Telefónica</title>
+<script>if(localStorage.getItem('torre-control-theme')==='dark'){ document.documentElement.classList.add('dark'); }</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -30,6 +31,31 @@
   --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
+:root.dark{
+  --bg: #0F1719;
+  --bg-panel: #182324;
+  --ink: #E6EFED;
+  --ink-soft: #9FB4B2;
+  --ink-faint: #6C8382;
+  --line: #2B3A3B;
+  --brand-soft: rgba(63,174,150,0.16);
+  --accent-amber-soft: rgba(228,161,33,0.16);
+  --accent-coral-soft: rgba(214,91,69,0.18);
+  --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 6px 20px rgba(0,0,0,0.35);
+}
+:root.dark tbody tr:hover{ background:#1D2A2B; }
+:root.dark td{ border-bottom-color:#243334; }
+:root.dark .conex-saturday td{ background:#1D2A2B; }
+:root.dark .conex-input.conex-neutral{ background:#1D2A2B; border-color:#2B3A3B; }
+:root.dark .conex-vertical th{ background:#1D2A2B; }
+:root.dark .rankbar-track{ background:#1D2A2B; }
+:root.dark .seg{ background:#1D2A2B; }
+:root.dark .seg button.active{ background:#243334; }
+:root.dark select, :root.dark input[type="date"], :root.dark input[type="text"], :root.dark input[type="number"], :root.dark .horario-select, :root.dark .pill{
+  background:#182324; color:var(--ink); border-color:#2B3A3B;
+}
+:root.dark h1, :root.dark .card h3, :root.dark .kpi .value, :root.dark .conex-saturday td.mono,
+:root.dark .podium-val, :root.dark .rankbar-val, :root.dark .donut-center{ color:#8FE4CE; }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 body{
@@ -37,6 +63,7 @@ body{
   background: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
+  transition: background .15s ease, color .15s ease;
 }
 ::selection{ background: var(--accent-mint); color: #fff; }
 
@@ -101,6 +128,55 @@ body{
   font-size:11.5px; color:#8FB6AF;
   display:flex; flex-direction:column; gap:3px;
 }
+.theme-toggle-btn{
+  border:none; background:none; cursor:pointer; color:#8FB6AF;
+  padding:5px 6px; margin-top:8px; border-radius:6px;
+  display:flex; align-items:center; gap:6px; font-size:11.5px; font-family:var(--font-body);
+}
+.theme-toggle-btn:hover{ color:#fff; background:rgba(255,255,255,0.08); }
+
+/* ---------- visitor (read-only) mode ---------- */
+body.visitor-mode .editable,
+body.visitor-mode .name-edit-btn,
+body.visitor-mode select[data-field],
+body.visitor-mode .dot-cell,
+body.visitor-mode .conex-input,
+body.visitor-mode .inbox-dot,
+body.visitor-mode #monitoreo-fecha,
+body.visitor-mode #devol1-fecha,
+body.visitor-mode #devol2-fecha,
+body.visitor-mode #devol2-confeccion,
+body.visitor-mode .devol1-input,
+body.visitor-mode .devol2-input,
+body.visitor-mode #colab-add-date,
+body.visitor-mode #colab-new-date{
+  pointer-events:none; opacity:.55; cursor:default;
+}
+
+/* ---------- auth gate ---------- */
+.auth-gate{
+  position:fixed; inset:0; z-index:1000; display:none;
+  align-items:center; justify-content:center;
+  background: rgba(16,38,42,0.55); backdrop-filter: blur(2px);
+  padding:20px;
+}
+.auth-card{
+  width:100%; max-width:360px; background:var(--bg-panel); border:1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding:28px 26px; text-align:center;
+}
+.auth-card h2{ font-family: var(--font-display); font-size:18px; margin:12px 0 4px 0; color:var(--brand-dark); }
+.auth-sub{ font-size:12.5px; color:var(--ink-soft); margin:0 0 20px 0; line-height:1.5; }
+.auth-card form{ display:flex; flex-direction:column; gap:12px; text-align:left; }
+.auth-card label{ font-size:12px; color:var(--ink-soft); display:flex; flex-direction:column; gap:5px; }
+.auth-card input{ width:100%; }
+.auth-error{ background:var(--accent-coral-soft); color:#9A3B27; font-size:12px; padding:8px 10px; border-radius:8px; }
+.auth-card .btn.primary{ width:100%; padding:10px; font-size:13px; }
+.auth-link{ border:none; background:none; color:var(--brand); font-size:12px; cursor:pointer; margin-top:14px; padding:4px; }
+.auth-link:hover{ text-decoration:underline; }
+.auth-divider{ display:flex; align-items:center; gap:10px; margin:18px 0 14px 0; color:var(--ink-faint); font-size:11px; }
+.auth-divider::before, .auth-divider::after{ content:''; flex:1; height:1px; background:var(--line); }
+.auth-card .btn{ width:100%; padding:10px; font-size:13px; }
+:root.dark .auth-gate{ background: rgba(0,0,0,0.65); }
 
 /* ---------- main ---------- */
 .main{
@@ -204,6 +280,7 @@ tbody tr:hover{ background: #FAFBFB; }
 .conex-vertical input{ text-align:center; padding:5px 4px; }
 .conex-input.conex-ok{ background: var(--brand-soft); border-color:#CFE7E2; }
 .conex-input.conex-late{ background: var(--accent-coral-soft); border-color:#F2CCC2; }
+.conex-input.conex-neutral{ background:#F2F5F5; border-color:#E1E7E7; }
 .conex-input.has-tag{ box-shadow: inset 3px 0 0 var(--accent-amber); font-size:11px; }
 .conex-saturday td{ background:#F2F5F5; }
 .conex-saturday td.mono{ font-weight:600; color:var(--brand-dark); }
@@ -298,11 +375,28 @@ select:focus, input:focus{ border-color: var(--brand); }
   #print-area .tbl-metrics td{ background:#EEF3F2; color:#1F2A28; }
   #print-area td.conex-ok{ background:#DCF3EC; color:#146356; font-weight:600; }
   #print-area td.conex-late{ background:#FBE0DA; color:#9A3B27; font-weight:600; }
+  #print-area td.conex-neutral{ background:#F2F5F5; color:#4E6367; font-weight:600; }
   #print-area .foot{ margin-top:30px; font-size:11px; color:#94A3A0; text-align:center; }
 }
 </style>
 </head>
 <body>
+<div class="auth-gate" id="auth-gate">
+  <div class="auth-card">
+    <div class="brand-mark" style="margin:0 auto 14px auto;">AT</div>
+    <h2>Torre de control</h2>
+    <p class="auth-sub">Iniciá sesión para editar los datos del equipo, o entrá como invitado para solo ver el tablero.</p>
+    <form id="auth-form">
+      <label>Email<input type="email" id="auth-email" autocomplete="username" required></label>
+      <label>Contraseña<input type="password" id="auth-password" autocomplete="current-password" required minlength="6"></label>
+      <div class="auth-error" id="auth-error" style="display:none;"></div>
+      <button type="submit" class="btn primary" id="auth-submit">Iniciar sesión</button>
+    </form>
+    <button type="button" class="auth-link" id="auth-toggle-mode">¿Primera vez? Crear cuenta de administrador</button>
+    <div class="auth-divider"><span>o</span></div>
+    <button type="button" class="btn" id="auth-guest">Continuar como invitado</button>
+  </div>
+</div>
 <div class="app">
 
   <aside class="sidebar">
@@ -343,6 +437,8 @@ select:focus, input:focus{ border-color: var(--brand); }
     <div class="sidebar-foot">
       <span id="foot-date"></span>
       <span>10 personas activas</span>
+      <span id="auth-status"></span>
+      <button id="theme-toggle" class="theme-toggle-btn" title="Cambiar modo claro/oscuro"></button>
     </div>
   </aside>
 
@@ -374,6 +470,7 @@ const TODAY = new Date(); // real "today" per environment
 
 /* ---------------- state ---------------- */
 const APP = {
+  isAdmin: false,
   view: 'resumen',
   prodMonth: null,
   conexDateIdx: null,
@@ -450,6 +547,127 @@ async function saveOverrides(){
   }catch(e){ /* ya se guardó en localStorage arriba */ }
 }
 
+/* ---------------- auth ---------------- */
+const ADMIN_EMAIL = 'david77870@gmail.com';
+
+function initAuthGate(){
+  return new Promise((resolve)=>{
+    const gate = document.getElementById('auth-gate');
+    const form = document.getElementById('auth-form');
+    const emailInp = document.getElementById('auth-email');
+    const passInp = document.getElementById('auth-password');
+    const errBox = document.getElementById('auth-error');
+    const submitBtn = document.getElementById('auth-submit');
+    const toggleBtn = document.getElementById('auth-toggle-mode');
+    const guestBtn = document.getElementById('auth-guest');
+    let gateMode = 'signin';
+
+    function showError(msg){ errBox.textContent = msg; errBox.style.display = 'block'; }
+    function clearError(){ errBox.style.display = 'none'; }
+    function setMode(mode){
+      gateMode = mode;
+      submitBtn.textContent = mode==='signup' ? 'Crear cuenta' : 'Iniciar sesión';
+      toggleBtn.textContent = mode==='signup' ? '¿Ya tenés cuenta? Iniciar sesión' : '¿Primera vez? Crear cuenta de administrador';
+      clearError();
+    }
+    setMode('signin');
+
+    function finish(isAdmin){
+      APP.isAdmin = isAdmin;
+      document.body.classList.toggle('visitor-mode', !isAdmin);
+      gate.style.display = 'none';
+      resolve();
+    }
+
+    toggleBtn.addEventListener('click', ()=> setMode(gateMode==='signup' ? 'signin' : 'signup'));
+    guestBtn.addEventListener('click', ()=> finish(false));
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      clearError();
+      if(!supabaseClient){ showError('No se pudo conectar con el servidor de autenticación.'); return; }
+      const email = emailInp.value.trim();
+      const password = passInp.value;
+      submitBtn.disabled = true;
+      try{
+        if(gateMode==='signup'){
+          const { data, error } = await supabaseClient.auth.signUp({ email, password });
+          if(error) throw error;
+          if(data.session){
+            finish(email.toLowerCase()===ADMIN_EMAIL.toLowerCase());
+          }else{
+            showError('Cuenta creada. Revisá tu email para confirmarla y después iniciá sesión.');
+            setMode('signin');
+          }
+        }else{
+          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if(error) throw error;
+          finish(email.toLowerCase()===ADMIN_EMAIL.toLowerCase());
+        }
+      }catch(err){
+        showError(err && err.message==='Invalid login credentials' ? 'Email o contraseña incorrectos.' : ((err && err.message) || 'No se pudo completar la acción.'));
+      }finally{
+        submitBtn.disabled = false;
+      }
+    });
+
+    (async ()=>{
+      if(supabaseClient){
+        try{
+          const { data:{ session } } = await supabaseClient.auth.getSession();
+          if(session && session.user && session.user.email && session.user.email.toLowerCase()===ADMIN_EMAIL.toLowerCase()){
+            finish(true);
+            return;
+          }
+        }catch(e){ /* fall through to showing the gate */ }
+      }else{
+        finish(false);
+        return;
+      }
+      gate.style.display = 'flex';
+    })();
+  });
+}
+
+function renderAuthStatus(){
+  const el = document.getElementById('auth-status');
+  if(!el) return;
+  if(APP.isAdmin){
+    el.innerHTML = 'Sesión: admin<button id="auth-logout" class="theme-toggle-btn" style="display:inline-flex; padding:2px 6px; margin:2px 0 0 0;">Cerrar sesión</button>';
+    const btn = document.getElementById('auth-logout');
+    if(btn) btn.addEventListener('click', async ()=>{
+      if(supabaseClient) await supabaseClient.auth.signOut();
+      location.reload();
+    });
+  }else{
+    el.innerHTML = 'Modo invitado (solo lectura)<button id="auth-login" class="theme-toggle-btn" style="display:inline-flex; padding:2px 6px; margin:2px 0 0 0;">Ingresar</button>';
+    const btn = document.getElementById('auth-login');
+    if(btn) btn.addEventListener('click', ()=> location.reload());
+  }
+}
+
+/* ---------------- theme ---------------- */
+const THEME_KEY = 'torre-control-theme';
+function themeIcon(isDark){
+  return isDark
+    ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
+    : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>';
+}
+function applyTheme(mode){
+  document.documentElement.classList.toggle('dark', mode==='dark');
+  try{ localStorage.setItem(THEME_KEY, mode); }catch(e){}
+  const btn = document.getElementById('theme-toggle');
+  if(btn) btn.innerHTML = themeIcon(mode==='dark') + (mode==='dark' ? ' Modo claro' : ' Modo oscuro');
+}
+function initTheme(){
+  const stored = (()=>{ try{ return localStorage.getItem(THEME_KEY); }catch(e){ return null; } })();
+  applyTheme(stored==='dark' ? 'dark' : 'light');
+  document.getElementById('theme-toggle').addEventListener('click', ()=>{
+    const isDark = document.documentElement.classList.contains('dark');
+    applyTheme(isDark ? 'light' : 'dark');
+  });
+}
+
 /* ---------------- helpers ---------------- */
 function initials(name){
   return name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
@@ -508,7 +726,7 @@ function hasConexTag(v){
   return !!(m && m[1] && m[1].trim());
 }
 function conexColorClass(c){
-  return c==='green' ? 'conex-ok' : c==='red' ? 'conex-late' : '';
+  return c==='green' ? 'conex-ok' : c==='red' ? 'conex-late' : c==='gray' ? 'conex-neutral' : '';
 }
 function modalidadClass(mod){
   if(!mod) return 'other';
@@ -558,6 +776,7 @@ function applyStoredRenames(){
   Object.entries(APP.overrides.nameRenames || {}).forEach(([original, current])=> migrateName(original, current));
 }
 async function renamePerson(currentName, newNameRaw){
+  if(!APP.isAdmin) return false;
   const newName = (newNameRaw || '').trim();
   if(!newName || newName===currentName) return false;
   if(NAMES.includes(newName)){ alert('Ya existe una persona con ese nombre.'); return false; }
@@ -589,6 +808,7 @@ function getMetric(name, mk){
   return Object.assign({ATT:null,ACW:null,HOLD:null,TMO:null,Llamados:null,ActDatos:null,GDigital:null,Nota:null}, base, ov);
 }
 async function setMetric(name, mk, field, value){
+  if(!APP.isAdmin) return;
   if(!APP.overrides.metrics[mk]) APP.overrides.metrics[mk] = {};
   if(!APP.overrides.metrics[mk][name]) APP.overrides.metrics[mk][name] = {};
   APP.overrides.metrics[mk][name][field] = value;
@@ -600,12 +820,14 @@ function getConexEntry(date, name){
   return Object.assign({}, base, ov);
 }
 async function setConexEntry(date, name, field, value){
+  if(!APP.isAdmin) return;
   if(!APP.overrides.conex[date]) APP.overrides.conex[date] = {};
   if(!APP.overrides.conex[date][name]) APP.overrides.conex[date][name] = {};
   APP.overrides.conex[date][name][field] = value;
   await saveOverrides();
 }
 async function addConexDate(date){
+  if(!APP.isAdmin) return;
   if(!RAW.conex[date]) RAW.conex[date] = {};
   if(!APP.overrides.conex[date]) APP.overrides.conex[date] = {};
   NAMES.forEach(n=>{
@@ -617,6 +839,7 @@ function getDevol1(name){
   return (APP.overrides.devol1[name]!==undefined) ? APP.overrides.devol1[name] : (RAW.devoluciones[name]||null);
 }
 async function setDevol1(name, value){
+  if(!APP.isAdmin) return;
   APP.overrides.devol1[name] = value;
   await saveOverrides();
 }
@@ -625,6 +848,7 @@ function getDevol2(name){
   return Object.assign({confeccion:null, fecha:null}, ov||{});
 }
 async function setDevol2(name, field, value){
+  if(!APP.isAdmin) return;
   const cur = getDevol2(name);
   cur[field] = value;
   APP.overrides.devol2[name] = cur;
@@ -634,6 +858,7 @@ function getInboxCheck(name){
   return APP.overrides.inbox[name] || {};
 }
 async function setInboxCheck(name, mkey, value){
+  if(!APP.isAdmin) return;
   if(!APP.overrides.inbox[name]) APP.overrides.inbox[name] = {};
   APP.overrides.inbox[name][mkey] = value;
   await saveOverrides();
@@ -953,6 +1178,7 @@ function renderEquipo(main){
   tbody.querySelectorAll('.name-edit-btn').forEach(btn=>{
     btn.addEventListener('click', async (e)=>{
       e.stopPropagation();
+      if(!APP.isAdmin) return;
       const name = btn.dataset.name;
       const nuevo = prompt('Nuevo nombre para "'+name+'":', name);
       if(nuevo==null) return;
@@ -964,6 +1190,7 @@ function renderEquipo(main){
   // inline edit for text fields (tarea/nota only — horario y modalidad usan <select>)
   tbody.querySelectorAll('.editable').forEach(span=>{
     span.addEventListener('click', ()=>{
+      if(!APP.isAdmin) return;
       const name = span.dataset.name, field = span.dataset.field;
       const current = span.textContent.trim()==='—' ? '' : span.textContent.trim();
       const input = document.createElement('input');
@@ -984,6 +1211,7 @@ function renderEquipo(main){
   // horario select change
   tbody.querySelectorAll('select[data-field="horario"]').forEach(sel=>{
     sel.addEventListener('change', async ()=>{
+      if(!APP.isAdmin) return;
       const name = sel.dataset.name;
       APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {horario: sel.value});
       await saveOverrides();
@@ -994,6 +1222,7 @@ function renderEquipo(main){
   // modalidad select change
   tbody.querySelectorAll('select[data-field="modalidad"]').forEach(sel=>{
     sel.addEventListener('change', async ()=>{
+      if(!APP.isAdmin) return;
       const name = sel.dataset.name;
       APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {modalidad: sel.value});
       await saveOverrides();
@@ -1004,6 +1233,7 @@ function renderEquipo(main){
   // productividad dots click to cycle
   tbody.querySelectorAll('.dot-cell').forEach(dot=>{
     dot.addEventListener('click', async ()=>{
+      if(!APP.isAdmin) return;
       const name = dot.dataset.name, mkey = dot.dataset.month;
       const cur = getProdCheck(name)[mkey];
       let next;
@@ -1115,6 +1345,7 @@ function renderColaborador(main){
   // header editable fields (tarea/nota)
   main.querySelectorAll('.editable').forEach(span=>{
     span.addEventListener('click', ()=>{
+      if(!APP.isAdmin) return;
       const nm = span.dataset.name, field = span.dataset.field;
       const current = span.textContent.trim()==='—' ? '' : span.textContent.trim();
       const input = document.createElement('input');
@@ -1132,11 +1363,13 @@ function renderColaborador(main){
     });
   });
   main.querySelector('select[data-field="modalidad"]').addEventListener('change', async (e)=>{
+    if(!APP.isAdmin) return;
     APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {modalidad: e.target.value});
     await saveOverrides();
     render();
   });
   main.querySelector('select[data-field="horario"]').addEventListener('change', async (e)=>{
+    if(!APP.isAdmin) return;
     APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {horario: e.target.value});
     await saveOverrides();
     render();
@@ -1316,6 +1549,7 @@ function renderColabDevoluciones(body, name){
     await setDevol2(name, 'fecha', e.target.value || null);
   });
   document.getElementById('monitoreo-fecha').addEventListener('change', async (e)=>{
+    if(!APP.isAdmin) return;
     APP.overrides.monitoreos[name] = e.target.value || null;
     await saveOverrides();
     render();
@@ -1580,6 +1814,7 @@ function renderMonitoreos(main){
   tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
   tbody.querySelectorAll('input[type="date"]').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
+      if(!APP.isAdmin) return;
       APP.overrides.monitoreos[inp.dataset.name] = inp.value;
       await saveOverrides();
       render();
@@ -1750,9 +1985,9 @@ function renderConexion(main){
       const {date:d, name:nm, colorfield} = inp.dataset;
       const entry = getConexEntry(d, nm);
       const cur = entry[colorfield];
-      const next = cur==='green' ? 'red' : cur==='red' ? null : 'green';
+      const next = cur==='green' ? 'red' : cur==='red' ? 'gray' : cur==='gray' ? null : 'green';
       await setConexEntry(d, nm, colorfield, next);
-      inp.classList.remove('conex-ok','conex-late');
+      inp.classList.remove('conex-ok','conex-late','conex-neutral');
       const cls = conexColorClass(next);
       if(cls) inp.classList.add(cls);
       inp.focus();
@@ -1763,6 +1998,8 @@ function renderConexion(main){
 /* ---------------- init ---------------- */
 (async function init(){
   document.getElementById('foot-date').textContent = TODAY.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+  initTheme();
+  await initAuthGate();
   await loadOverrides();
   applyStoredRenames();
   // reconstruct any dates the user added manually (persisted only in overrides)
@@ -1773,6 +2010,7 @@ function renderConexion(main){
     }
   });
   render();
+  renderAuthStatus();
 })();
 
 </script>
