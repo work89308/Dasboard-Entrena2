@@ -271,22 +271,13 @@ tbody tr:hover{ background: #FAFBFB; }
 .badge svg{ width:11px;height:11px; }
 
 /* pills for modalidad */
-.pill{ font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; border:1px solid var(--line); color:var(--ink-soft); background:#fff; }
-.pill.home{ background:#EFF4FB; color:var(--accent-blue); border-color:#D9E6F5; }
-.pill.central{ background:var(--brand-soft); color:var(--brand); border-color:#CFE7E2;}
-.pill.palomitas{ background:#F3EEFB; color:#6C4FA8; border-color:#E2D6F5;}
-.pill.mayo{ background:#FBEEEE; color:#B0483F; border-color:#F2D6D3;}
-.pill.other{ background:#F5F1E9; color:#8A6B1F; border-color:#EBE0C8;}
-.pill.tarea-1{ background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2; }
-.pill.tarea-2{ background:#E3F5EE; color:#1F8F6D; border-color:#C9E9DC; }
-.pill.tarea-3{ background:#EFF4FB; color:var(--accent-blue); border-color:#D9E6F5; }
-.pill.tarea-4{ background:#F3EEFB; color:#6C4FA8; border-color:#E2D6F5; }
-.pill.tarea-5{ background: var(--accent-amber-soft); color:#8A6B1F; border-color:#F2E2B8; }
-.pill.tarea-6{ background: var(--accent-coral-soft); color:#B0483F; border-color:#F2D6D3; }
-.pill.tarea-7{ background:#EEF2F5; color:#4C7A9E; border-color:#DCE6ED; }
-.pill.tarea-8{ background:#F5F1E9; color:#8A6B1F; border-color:#EBE0C8; }
-.pill.tarea-empty{ background:#F2F5F5; color:var(--ink-soft); border-color:#E1E7E7; }
-.horario-select{ font-family:var(--font-mono); font-size:12.5px; padding:4px 8px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); }
+.pill{ font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; color:var(--brand); background:var(--brand-soft); }
+.pill.home, .pill.central, .pill.palomitas, .pill.mayo, .pill.other,
+.pill.tarea-1, .pill.tarea-2, .pill.tarea-3, .pill.tarea-4,
+.pill.tarea-5, .pill.tarea-6, .pill.tarea-7, .pill.tarea-8, .pill.tarea-empty{
+  background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2;
+}
+.horario-select{ font-family:var(--font-mono); font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
 .conex-vertical th{ position:sticky; top:0; background:#F2F5F5; z-index:1; }
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
 .conex-vertical input{ text-align:center; padding:5px 4px; }
@@ -1289,7 +1280,7 @@ function modalidadSelect(name, current, mk){
   const opts = ['Central','Home','Palomitas','1ro de Mayo','Otro'];
   const cls = modalidadClass(current);
   const list = (current && !opts.includes(current)) ? [...opts, current] : opts;
-  return `<select data-field="modalidad" data-name="${name}" data-month="${mk||''}" class="pill ${cls}" style="border:1px solid var(--line);">
+  return `<select data-field="modalidad" data-name="${name}" data-month="${mk||''}" class="pill ${cls}">
     <option value="" ${!current?'selected':''}>—</option>
     ${list.map(o=>`<option value="${o}" ${current===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
@@ -1312,7 +1303,7 @@ function tareaSelect(name, current){
   const val = (current && current!=='—') ? current : '';
   const list = (val && !TAREA_OPTIONS.includes(val)) ? [...TAREA_OPTIONS, val] : TAREA_OPTIONS;
   const cls = tareaClass(val);
-  return `<select data-field="tarea" data-name="${name}" class="pill ${cls}" style="border:1px solid var(--line);">
+  return `<select data-field="tarea" data-name="${name}" class="pill ${cls}">
     <option value="" ${!val?'selected':''}>—</option>
     ${list.map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
