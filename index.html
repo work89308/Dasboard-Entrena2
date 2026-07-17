@@ -757,6 +757,7 @@ function getRosterMonth(name, mk){
   return {
     horario: ov.horario!==undefined ? ov.horario : base.horario,
     modalidad: ov.modalidad!==undefined ? ov.modalidad : base.modalidad,
+    tarea: ov.tarea!==undefined ? ov.tarea : base.tarea,
   };
 }
 async function setRosterMonth(name, mk, field, value){
@@ -988,8 +989,8 @@ function renderResumen(main){
   const monitoreoRows = NAMES.map(n=>({name:n, ...getMonitoreo(n)}));
   const atrasados = monitoreoRows.filter(r=>r.dias!=null && r.dias>7).sort((a,b)=>b.dias-a.dias);
 
-  const homeCount = NAMES.filter(n=>modalidadClass(getRoster(n).modalidad)==='home').length;
-  const centralCount = NAMES.filter(n=>modalidadClass(getRoster(n).modalidad)==='central').length;
+  const homeCount = NAMES.filter(n=>modalidadClass(getRosterMonth(n, CURRENT_MONTH_KEY).modalidad)==='home').length;
+  const centralCount = NAMES.filter(n=>modalidadClass(getRosterMonth(n, CURRENT_MONTH_KEY).modalidad)==='central').length;
 
   const podio = NAMES.map(n=>({name:n, v: metrics[n] && typeof metrics[n].ActDatos==='number' ? metrics[n].ActDatos : null}))
     .filter(r=>r.v!=null).sort((a,b)=>b.v-a.v).slice(0,3);
@@ -1082,7 +1083,6 @@ function renderResumen(main){
   // ---- populate DOM ----
   const rtbody = document.getElementById('resumen-tbody');
   NAMES.forEach(name=>{
-    const r = getRoster(name);
     const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
     const check = getProdCheck(name);
     const m = getMonitoreo(name);
@@ -1091,7 +1091,7 @@ function renderResumen(main){
       <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name)} <span>${name}</span></div></td>
       <td class="mono">${rm.horario||'—'}</td>
       <td><span class="pill ${modalidadClass(rm.modalidad)}">${rm.modalidad||'—'}</span></td>
-      <td style="color:var(--ink-soft); font-size:12.5px;">${r.tarea||'—'}</td>
+      <td style="color:var(--ink-soft); font-size:12.5px;">${rm.tarea||'—'}</td>
       <td>${prodDots(name, check)}</td>
       <td>${monitoreoBadge(m)}</td>
     `;
@@ -1157,7 +1157,7 @@ function renderEquipo(main){
     <div class="topbar">
       <div>
         <h1>Equipo</h1>
-        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Horario y modalidad se guardan por mes, porque cambian según el período. Hacé clic en un dato para editarlo. Usá el lápiz junto al nombre para renombrar a una persona (por ejemplo, al cambiar de integrantes).</p>
+        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Horario, modalidad y tarea se guardan por mes, porque cambian según el período. Hacé clic en un dato para editarlo. Usá el lápiz junto al nombre para renombrar a una persona (por ejemplo, al cambiar de integrantes).</p>
       </div>
     </div>
     <div class="card" style="margin-bottom:16px;">
@@ -1172,7 +1172,7 @@ function renderEquipo(main){
       <table>
         <thead>
           <tr>
-            <th>Nombre</th><th>Horario <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Modalidad <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Tarea</th>
+            <th>Nombre</th><th>Horario <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Modalidad <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Tarea <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th>
             <th>Productividad ${new Date().getFullYear()}</th><th>Último monitoreo</th><th>Devolución 1er sem.</th>
           </tr>
         </thead>
@@ -1190,7 +1190,6 @@ function renderEquipo(main){
   });
   const tbody = document.getElementById('equipo-tbody');
   NAMES.forEach(name=>{
-    const r = getRoster(name);
     const rm = getRosterMonth(name, mk);
     const mon = getMonitoreo(name);
     const check = getProdCheck(name);
@@ -1207,7 +1206,7 @@ function renderEquipo(main){
       </td>
       <td>${horarioSelect(name, rm.horario, mk)}</td>
       <td>${modalidadSelect(name, rm.modalidad, mk)}</td>
-      <td>${tareaSelect(name, r.tarea)}</td>
+      <td>${tareaSelect(name, rm.tarea, mk)}</td>
       <td>${prodDots(name, check)}</td>
       <td>${monitoreoBadge(mon)}</td>
       <td class="mono">${devol || '—'}</td>
@@ -1229,13 +1228,11 @@ function renderEquipo(main){
     });
   });
 
-  // tarea select change
+  // tarea select change (por mes)
   tbody.querySelectorAll('select[data-field="tarea"]').forEach(sel=>{
     sel.addEventListener('change', async ()=>{
       if(!APP.isAdmin) return;
-      const name = sel.dataset.name;
-      APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {tarea: sel.value});
-      await saveOverrides();
+      await setRosterMonth(sel.dataset.name, sel.dataset.month, 'tarea', sel.value);
       render();
     });
   });
@@ -1299,11 +1296,11 @@ function tareaClass(t){
   const idx = TAREA_OPTIONS.indexOf(t);
   return idx>=0 ? 'tarea-'+(idx+1) : 'other';
 }
-function tareaSelect(name, current){
+function tareaSelect(name, current, mk){
   const val = (current && current!=='—') ? current : '';
   const list = (val && !TAREA_OPTIONS.includes(val)) ? [...TAREA_OPTIONS, val] : TAREA_OPTIONS;
   const cls = tareaClass(val);
-  return `<select data-field="tarea" data-name="${name}" class="pill ${cls}">
+  return `<select data-field="tarea" data-name="${name}" data-month="${mk||''}" class="pill ${cls}">
     <option value="" ${!val?'selected':''}>—</option>
     ${list.map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
@@ -1330,7 +1327,6 @@ function monitoreoBadge(mon){
 function renderColaborador(main){
   if(!APP.colaborador || !NAMES.includes(APP.colaborador)) APP.colaborador = NAMES[0];
   const name = APP.colaborador;
-  const r = getRoster(name);
   const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
   const mon = getMonitoreo(name);
   const tab = APP.colabTab || 'productividad';
@@ -1353,13 +1349,13 @@ function renderColaborador(main){
         <div style="font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--brand-dark);">${name}</div>
         <div style="display:flex; align-items:center; gap:16px; margin-top:6px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-soft);">
           <span style="display:flex; align-items:center; gap:6px;">Horario (${MONTH_LABELS[CURRENT_MONTH_KEY]}): ${horarioSelect(name, rm.horario, CURRENT_MONTH_KEY)}</span>
-          <span>Tarea/nota: ${tareaSelect(name, r.tarea)}</span>
+          <span>Tarea (${MONTH_LABELS[CURRENT_MONTH_KEY]}): ${tareaSelect(name, rm.tarea, CURRENT_MONTH_KEY)}</span>
         </div>
       </div>
       <div>${modalidadSelect(name, rm.modalidad, CURRENT_MONTH_KEY)}</div>
       <div>${monitoreoBadge(mon)}</div>
     </div>
-    <div class="foot-note" style="margin:-10px 0 16px 0;">Horario y modalidad corresponden al mes en curso. Para ver o editar otros meses, andá a Equipo y elegí el mes.</div>
+    <div class="foot-note" style="margin:-10px 0 16px 0;">Horario, modalidad y tarea corresponden al mes en curso. Para ver o editar otros meses, andá a Equipo y elegí el mes.</div>
 
     <div class="seg" id="colab-tabs" style="margin-bottom:16px;">
       <button data-tab="productividad" class="${tab==='productividad'?'active':''}">Productividad</button>
@@ -1387,14 +1383,12 @@ function renderColaborador(main){
     render();
   });
 
-  // tarea select change
+  // horario, modalidad y tarea se guardan para el mes en curso
   main.querySelector('select[data-field="tarea"]').addEventListener('change', async (e)=>{
     if(!APP.isAdmin) return;
-    APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {tarea: e.target.value});
-    await saveOverrides();
+    await setRosterMonth(name, CURRENT_MONTH_KEY, 'tarea', e.target.value);
     render();
   });
-  // horario y modalidad se guardan para el mes en curso
   main.querySelector('select[data-field="modalidad"]').addEventListener('change', async (e)=>{
     if(!APP.isAdmin) return;
     await setRosterMonth(name, CURRENT_MONTH_KEY, 'modalidad', e.target.value);
