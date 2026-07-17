@@ -271,22 +271,13 @@ tbody tr:hover{ background: #FAFBFB; }
 .badge svg{ width:11px;height:11px; }
 
 /* pills for modalidad */
-.pill{ font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; border:1px solid var(--line); color:var(--ink-soft); background:#fff; }
-.pill.home{ background:#EFF4FB; color:var(--accent-blue); border-color:#D9E6F5; }
-.pill.central{ background:var(--brand-soft); color:var(--brand); border-color:#CFE7E2;}
-.pill.palomitas{ background:#F3EEFB; color:#6C4FA8; border-color:#E2D6F5;}
-.pill.mayo{ background:#FBEEEE; color:#B0483F; border-color:#F2D6D3;}
-.pill.other{ background:#F5F1E9; color:#8A6B1F; border-color:#EBE0C8;}
-.pill.tarea-1{ background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2; }
-.pill.tarea-2{ background:#E3F5EE; color:#1F8F6D; border-color:#C9E9DC; }
-.pill.tarea-3{ background:#EFF4FB; color:var(--accent-blue); border-color:#D9E6F5; }
-.pill.tarea-4{ background:#F3EEFB; color:#6C4FA8; border-color:#E2D6F5; }
-.pill.tarea-5{ background: var(--accent-amber-soft); color:#8A6B1F; border-color:#F2E2B8; }
-.pill.tarea-6{ background: var(--accent-coral-soft); color:#B0483F; border-color:#F2D6D3; }
-.pill.tarea-7{ background:#EEF2F5; color:#4C7A9E; border-color:#DCE6ED; }
-.pill.tarea-8{ background:#F5F1E9; color:#8A6B1F; border-color:#EBE0C8; }
-.pill.tarea-empty{ background:#F2F5F5; color:var(--ink-soft); border-color:#E1E7E7; }
-.horario-select{ font-family:var(--font-mono); font-size:12.5px; padding:4px 8px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); }
+.pill{ font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; color:var(--brand); background:var(--brand-soft); }
+.pill.home, .pill.central, .pill.palomitas, .pill.mayo, .pill.other,
+.pill.tarea-1, .pill.tarea-2, .pill.tarea-3, .pill.tarea-4,
+.pill.tarea-5, .pill.tarea-6, .pill.tarea-7, .pill.tarea-8, .pill.tarea-empty{
+  background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2;
+}
+.horario-select{ font-family:var(--font-mono); font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
 .conex-vertical th{ position:sticky; top:0; background:#F2F5F5; z-index:1; }
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
 .conex-vertical input{ text-align:center; padding:5px 4px; }
@@ -766,6 +757,7 @@ function getRosterMonth(name, mk){
   return {
     horario: ov.horario!==undefined ? ov.horario : base.horario,
     modalidad: ov.modalidad!==undefined ? ov.modalidad : base.modalidad,
+    tarea: ov.tarea!==undefined ? ov.tarea : base.tarea,
   };
 }
 async function setRosterMonth(name, mk, field, value){
@@ -997,8 +989,8 @@ function renderResumen(main){
   const monitoreoRows = NAMES.map(n=>({name:n, ...getMonitoreo(n)}));
   const atrasados = monitoreoRows.filter(r=>r.dias!=null && r.dias>7).sort((a,b)=>b.dias-a.dias);
 
-  const homeCount = NAMES.filter(n=>modalidadClass(getRoster(n).modalidad)==='home').length;
-  const centralCount = NAMES.filter(n=>modalidadClass(getRoster(n).modalidad)==='central').length;
+  const homeCount = NAMES.filter(n=>modalidadClass(getRosterMonth(n, CURRENT_MONTH_KEY).modalidad)==='home').length;
+  const centralCount = NAMES.filter(n=>modalidadClass(getRosterMonth(n, CURRENT_MONTH_KEY).modalidad)==='central').length;
 
   const podio = NAMES.map(n=>({name:n, v: metrics[n] && typeof metrics[n].ActDatos==='number' ? metrics[n].ActDatos : null}))
     .filter(r=>r.v!=null).sort((a,b)=>b.v-a.v).slice(0,3);
@@ -1091,7 +1083,6 @@ function renderResumen(main){
   // ---- populate DOM ----
   const rtbody = document.getElementById('resumen-tbody');
   NAMES.forEach(name=>{
-    const r = getRoster(name);
     const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
     const check = getProdCheck(name);
     const m = getMonitoreo(name);
@@ -1100,7 +1091,7 @@ function renderResumen(main){
       <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name)} <span>${name}</span></div></td>
       <td class="mono">${rm.horario||'—'}</td>
       <td><span class="pill ${modalidadClass(rm.modalidad)}">${rm.modalidad||'—'}</span></td>
-      <td style="color:var(--ink-soft); font-size:12.5px;">${r.tarea||'—'}</td>
+      <td style="color:var(--ink-soft); font-size:12.5px;">${rm.tarea||'—'}</td>
       <td>${prodDots(name, check)}</td>
       <td>${monitoreoBadge(m)}</td>
     `;
@@ -1166,7 +1157,7 @@ function renderEquipo(main){
     <div class="topbar">
       <div>
         <h1>Equipo</h1>
-        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Horario y modalidad se guardan por mes, porque cambian según el período. Hacé clic en un dato para editarlo. Usá el lápiz junto al nombre para renombrar a una persona (por ejemplo, al cambiar de integrantes).</p>
+        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Horario, modalidad y tarea se guardan por mes, porque cambian según el período. Hacé clic en un dato para editarlo. Usá el lápiz junto al nombre para renombrar a una persona (por ejemplo, al cambiar de integrantes).</p>
       </div>
     </div>
     <div class="card" style="margin-bottom:16px;">
@@ -1181,7 +1172,7 @@ function renderEquipo(main){
       <table>
         <thead>
           <tr>
-            <th>Nombre</th><th>Horario <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Modalidad <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Tarea</th>
+            <th>Nombre</th><th>Horario <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Modalidad <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Tarea <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th>
             <th>Productividad ${new Date().getFullYear()}</th><th>Último monitoreo</th><th>Devolución 1er sem.</th>
           </tr>
         </thead>
@@ -1199,7 +1190,6 @@ function renderEquipo(main){
   });
   const tbody = document.getElementById('equipo-tbody');
   NAMES.forEach(name=>{
-    const r = getRoster(name);
     const rm = getRosterMonth(name, mk);
     const mon = getMonitoreo(name);
     const check = getProdCheck(name);
@@ -1216,7 +1206,7 @@ function renderEquipo(main){
       </td>
       <td>${horarioSelect(name, rm.horario, mk)}</td>
       <td>${modalidadSelect(name, rm.modalidad, mk)}</td>
-      <td>${tareaSelect(name, r.tarea)}</td>
+      <td>${tareaSelect(name, rm.tarea, mk)}</td>
       <td>${prodDots(name, check)}</td>
       <td>${monitoreoBadge(mon)}</td>
       <td class="mono">${devol || '—'}</td>
@@ -1238,13 +1228,11 @@ function renderEquipo(main){
     });
   });
 
-  // tarea select change
+  // tarea select change (por mes)
   tbody.querySelectorAll('select[data-field="tarea"]').forEach(sel=>{
     sel.addEventListener('change', async ()=>{
       if(!APP.isAdmin) return;
-      const name = sel.dataset.name;
-      APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {tarea: sel.value});
-      await saveOverrides();
+      await setRosterMonth(sel.dataset.name, sel.dataset.month, 'tarea', sel.value);
       render();
     });
   });
@@ -1289,7 +1277,7 @@ function modalidadSelect(name, current, mk){
   const opts = ['Central','Home','Palomitas','1ro de Mayo','Otro'];
   const cls = modalidadClass(current);
   const list = (current && !opts.includes(current)) ? [...opts, current] : opts;
-  return `<select data-field="modalidad" data-name="${name}" data-month="${mk||''}" class="pill ${cls}" style="border:1px solid var(--line);">
+  return `<select data-field="modalidad" data-name="${name}" data-month="${mk||''}" class="pill ${cls}">
     <option value="" ${!current?'selected':''}>—</option>
     ${list.map(o=>`<option value="${o}" ${current===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
@@ -1308,11 +1296,11 @@ function tareaClass(t){
   const idx = TAREA_OPTIONS.indexOf(t);
   return idx>=0 ? 'tarea-'+(idx+1) : 'other';
 }
-function tareaSelect(name, current){
+function tareaSelect(name, current, mk){
   const val = (current && current!=='—') ? current : '';
   const list = (val && !TAREA_OPTIONS.includes(val)) ? [...TAREA_OPTIONS, val] : TAREA_OPTIONS;
   const cls = tareaClass(val);
-  return `<select data-field="tarea" data-name="${name}" class="pill ${cls}" style="border:1px solid var(--line);">
+  return `<select data-field="tarea" data-name="${name}" data-month="${mk||''}" class="pill ${cls}">
     <option value="" ${!val?'selected':''}>—</option>
     ${list.map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
@@ -1339,7 +1327,6 @@ function monitoreoBadge(mon){
 function renderColaborador(main){
   if(!APP.colaborador || !NAMES.includes(APP.colaborador)) APP.colaborador = NAMES[0];
   const name = APP.colaborador;
-  const r = getRoster(name);
   const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
   const mon = getMonitoreo(name);
   const tab = APP.colabTab || 'productividad';
@@ -1362,13 +1349,13 @@ function renderColaborador(main){
         <div style="font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--brand-dark);">${name}</div>
         <div style="display:flex; align-items:center; gap:16px; margin-top:6px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-soft);">
           <span style="display:flex; align-items:center; gap:6px;">Horario (${MONTH_LABELS[CURRENT_MONTH_KEY]}): ${horarioSelect(name, rm.horario, CURRENT_MONTH_KEY)}</span>
-          <span>Tarea/nota: ${tareaSelect(name, r.tarea)}</span>
+          <span>Tarea (${MONTH_LABELS[CURRENT_MONTH_KEY]}): ${tareaSelect(name, rm.tarea, CURRENT_MONTH_KEY)}</span>
         </div>
       </div>
       <div>${modalidadSelect(name, rm.modalidad, CURRENT_MONTH_KEY)}</div>
       <div>${monitoreoBadge(mon)}</div>
     </div>
-    <div class="foot-note" style="margin:-10px 0 16px 0;">Horario y modalidad corresponden al mes en curso. Para ver o editar otros meses, andá a Equipo y elegí el mes.</div>
+    <div class="foot-note" style="margin:-10px 0 16px 0;">Horario, modalidad y tarea corresponden al mes en curso. Para ver o editar otros meses, andá a Equipo y elegí el mes.</div>
 
     <div class="seg" id="colab-tabs" style="margin-bottom:16px;">
       <button data-tab="productividad" class="${tab==='productividad'?'active':''}">Productividad</button>
@@ -1396,14 +1383,12 @@ function renderColaborador(main){
     render();
   });
 
-  // tarea select change
+  // horario, modalidad y tarea se guardan para el mes en curso
   main.querySelector('select[data-field="tarea"]').addEventListener('change', async (e)=>{
     if(!APP.isAdmin) return;
-    APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {tarea: e.target.value});
-    await saveOverrides();
+    await setRosterMonth(name, CURRENT_MONTH_KEY, 'tarea', e.target.value);
     render();
   });
-  // horario y modalidad se guardan para el mes en curso
   main.querySelector('select[data-field="modalidad"]').addEventListener('change', async (e)=>{
     if(!APP.isAdmin) return;
     await setRosterMonth(name, CURRENT_MONTH_KEY, 'modalidad', e.target.value);
