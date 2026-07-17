@@ -285,6 +285,7 @@ tbody tr:hover{ background: #FAFBFB; }
 .pill.tarea-6{ background: var(--accent-coral-soft); color:#B0483F; border-color:#F2D6D3; }
 .pill.tarea-7{ background:#EEF2F5; color:#4C7A9E; border-color:#DCE6ED; }
 .pill.tarea-8{ background:#F5F1E9; color:#8A6B1F; border-color:#EBE0C8; }
+.pill.tarea-empty{ background:#F2F5F5; color:var(--ink-soft); border-color:#E1E7E7; }
 .horario-select{ font-family:var(--font-mono); font-size:12.5px; padding:4px 8px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); }
 .conex-vertical th{ position:sticky; top:0; background:#F2F5F5; z-index:1; }
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
@@ -1301,8 +1302,9 @@ function horarioSelect(name, current, mk){
     ${list.map(o=>`<option value="${o}" ${current===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
 }
-const TAREA_OPTIONS = ['Atención Telefónica','Comunidad fija y Whatsapp','Respuesta Mail - Apoyo','Redes','Carga de solicitudes','Línea 7075','Planes JS','Admin. Bandejas'];
+const TAREA_OPTIONS = ['Atención Telefónica','Comunidad fija - Whatsapp','Respuesta Mail - Apoyo','Redes','Carga de solicitudes','Línea 7075','Planes JS','Admin. Bandejas'];
 function tareaClass(t){
+  if(!t) return 'tarea-empty';
   const idx = TAREA_OPTIONS.indexOf(t);
   return idx>=0 ? 'tarea-'+(idx+1) : 'other';
 }
