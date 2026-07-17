@@ -470,17 +470,19 @@ const COLOR = {};
 NAMES.forEach((n,i)=> COLOR[n] = PALETTE[i % PALETTE.length]);
 
 const TODAY = new Date(); // real "today" per environment
+const CURRENT_MONTH_KEY = MONTH_KEYS[TODAY.getMonth()];
 
 /* ---------------- state ---------------- */
 const APP = {
   isAdmin: false,
   view: 'resumen',
   prodMonth: null,
+  equipoMonth: null,
   conexDateIdx: null,
   colaborador: null,
   colabTab: 'productividad',
   bannerDismissed: { resumen:false, monitoreos:false },
-  overrides: { roster:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, inbox:{}, nameRenames:{} },
+  overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, inbox:{}, nameRenames:{} },
 };
 const METRIC_FIELDS = ['ATT','ACW','HOLD','TMO','Llamados','ActDatos','GDigital','Nota'];
 const METRIC_LABELS = {ATT:'ATT', ACW:'ACW', HOLD:'HOLD', TMO:'TMO', Llamados:'Llamados', ActDatos:'% Datos', GDigital:'G. Digital', Nota:'Nota'};
@@ -490,7 +492,7 @@ const LOCAL_KEY = 'torre-control-overrides';
 const SUPABASE_URL = 'https://kakjzaviulnccldccucl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_AAPMZ4poPfvsJuYuKBW7rA_o5dMn5ND';
 const OVERRIDES_ROW_ID = 'main';
-const DEFAULT_OVERRIDES = {roster:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},inbox:{},nameRenames:{}};
+const DEFAULT_OVERRIDES = {roster:{},roster_month:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},inbox:{},nameRenames:{}};
 const supabaseClient = (typeof window.supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
@@ -705,6 +707,10 @@ function parseHorarioStart(horario){
   const m = (horario||'').match(/(\d{1,2})/);
   return m ? parseInt(m[1],10) : null;
 }
+function monthKeyFromDate(iso){
+  const monthNum = parseInt(iso.slice(5,7),10);
+  return MONTH_KEYS[monthNum-1];
+}
 function fmtDateDMY(iso){
   if(!iso) return '';
   const [y,m,d] = iso.split('-');
@@ -745,6 +751,21 @@ function getRoster(name){
   const ov = APP.overrides.roster[name] || {};
   return Object.assign({name, tarea:'—'}, base, ov);
 }
+function getRosterMonth(name, mk){
+  const base = getRoster(name);
+  const ov = (APP.overrides.roster_month[mk] && APP.overrides.roster_month[mk][name]) || {};
+  return {
+    horario: ov.horario!==undefined ? ov.horario : base.horario,
+    modalidad: ov.modalidad!==undefined ? ov.modalidad : base.modalidad,
+  };
+}
+async function setRosterMonth(name, mk, field, value){
+  if(!APP.isAdmin) return;
+  if(!APP.overrides.roster_month[mk]) APP.overrides.roster_month[mk] = {};
+  if(!APP.overrides.roster_month[mk][name]) APP.overrides.roster_month[mk][name] = {};
+  APP.overrides.roster_month[mk][name][field] = value;
+  await saveOverrides();
+}
 function rekeyProp(obj, oldKey, newKey){
   if(obj && Object.prototype.hasOwnProperty.call(obj, oldKey)){
     obj[newKey] = obj[oldKey];
@@ -762,6 +783,7 @@ function migrateName(oldName, newName){
   Object.keys(RAW.conex).forEach(date=> rekeyProp(RAW.conex[date], oldName, newName));
 
   rekeyProp(APP.overrides.roster, oldName, newName);
+  MONTH_KEYS.forEach(mk=>{ if(APP.overrides.roster_month[mk]) rekeyProp(APP.overrides.roster_month[mk], oldName, newName); });
   rekeyProp(APP.overrides.monitoreos, oldName, newName);
   rekeyProp(APP.overrides.prod_check, oldName, newName);
   MONTH_KEYS.forEach(mk=>{ if(APP.overrides.metrics[mk]) rekeyProp(APP.overrides.metrics[mk], oldName, newName); });
@@ -1042,7 +1064,7 @@ function renderResumen(main){
     </div>
 
     <div class="card" style="margin-top:16px;">
-      <h3>Equipo <span class="sub">Horario, modalidad y tarea de julio</span></h3>
+      <h3>Equipo <span class="sub">Horario, modalidad y tarea de ${MONTH_LABELS[CURRENT_MONTH_KEY]}</span></h3>
       <div class="scroll-x">
       <table>
         <thead><tr><th>Nombre</th><th>Horario</th><th>Modalidad</th><th>Tarea</th><th>Productividad</th><th>Monitoreo</th></tr></thead>
@@ -1061,13 +1083,14 @@ function renderResumen(main){
   const rtbody = document.getElementById('resumen-tbody');
   NAMES.forEach(name=>{
     const r = getRoster(name);
+    const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
     const check = getProdCheck(name);
     const m = getMonitoreo(name);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name)} <span>${name}</span></div></td>
-      <td class="mono">${r.horario||'—'}</td>
-      <td><span class="pill ${modalidadClass(r.modalidad)}">${r.modalidad||'—'}</span></td>
+      <td class="mono">${rm.horario||'—'}</td>
+      <td><span class="pill ${modalidadClass(rm.modalidad)}">${rm.modalidad||'—'}</span></td>
       <td style="color:var(--ink-soft); font-size:12.5px;">${r.tarea||'—'}</td>
       <td>${prodDots(name, check)}</td>
       <td>${monitoreoBadge(m)}</td>
@@ -1078,7 +1101,7 @@ function renderResumen(main){
 
   const cardsWrap = document.getElementById('resumen-cards');
   NAMES.forEach(name=>{
-    const r = getRoster(name);
+    const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
     const v = metrics[name] || {};
     const m = getMonitoreo(name);
     const card = document.createElement('div');
@@ -1089,11 +1112,11 @@ function renderResumen(main){
         ${avatar(name,34)}
         <div>
           <div style="font-weight:600; font-size:13px; color:var(--brand-dark); line-height:1.2;">${name}</div>
-          <span class="pill ${modalidadClass(r.modalidad)}" style="margin-top:3px; display:inline-block;">${r.modalidad||'—'}</span>
+          <span class="pill ${modalidadClass(rm.modalidad)}" style="margin-top:3px; display:inline-block;">${rm.modalidad||'—'}</span>
         </div>
       </div>
       <div style="font-size:11.5px; color:var(--ink-soft); display:flex; flex-direction:column; gap:3px;">
-        <span>Horario: <b class="mono">${r.horario||'—'}</b></span>
+        <span>Horario: <b class="mono">${rm.horario||'—'}</b></span>
         <span>TMO ${MONTH_LABELS[mk]}: <b class="mono">${v.TMO && v.TMO!=='AD' ? fmtTimeShort(v.TMO) : '—'}</b></span>
         <span>Llamados: <b class="mono">${typeof v.Llamados==='number'?v.Llamados:'—'}</b></span>
       </div>
@@ -1128,11 +1151,20 @@ function iconAlert(){
 
 /* ================= EQUIPO ================= */
 function renderEquipo(main){
+  if(!APP.equipoMonth) APP.equipoMonth = CURRENT_MONTH_KEY;
+  const mk = APP.equipoMonth;
   main.innerHTML = `
     <div class="topbar">
       <div>
         <h1>Equipo</h1>
-        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Hacé clic en un dato para editarlo. Usá el lápiz junto al nombre para renombrar a una persona (por ejemplo, al cambiar de integrantes).</p>
+        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Horario y modalidad se guardan por mes, porque cambian según el período. Hacé clic en un dato para editarlo. Usá el lápiz junto al nombre para renombrar a una persona (por ejemplo, al cambiar de integrantes).</p>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="scroll-x">
+        <div class="seg" id="equipo-month-tabs" style="width:max-content;">
+          ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}">${MONTH_LABELS[m].slice(0,3)}</button>`).join('')}
+        </div>
       </div>
     </div>
     <div class="card">
@@ -1140,7 +1172,7 @@ function renderEquipo(main){
       <table>
         <thead>
           <tr>
-            <th>Nombre</th><th>Horario</th><th>Modalidad</th><th>Tarea / nota</th>
+            <th>Nombre</th><th>Horario <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Modalidad <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Tarea / nota</th>
             <th>Productividad ${new Date().getFullYear()}</th><th>Último monitoreo</th><th>Devolución 1er sem.</th>
           </tr>
         </thead>
@@ -1148,11 +1180,18 @@ function renderEquipo(main){
       </table>
       </div>
     </div>
-    <div class="foot-note">Los cambios se guardan automáticamente en este navegador.</div>
+    <div class="foot-note">Los cambios se guardan automáticamente en Supabase.</div>
   `;
+  document.getElementById('equipo-month-tabs').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-month]');
+    if(!btn) return;
+    APP.equipoMonth = btn.dataset.month;
+    render();
+  });
   const tbody = document.getElementById('equipo-tbody');
   NAMES.forEach(name=>{
     const r = getRoster(name);
+    const rm = getRosterMonth(name, mk);
     const mon = getMonitoreo(name);
     const check = getProdCheck(name);
     const devol = getDevol1(name);
@@ -1166,9 +1205,9 @@ function renderEquipo(main){
           </button>
         </div>
       </td>
-      <td>${horarioSelect(name, r.horario)}</td>
-      <td>${modalidadSelect(name, r.modalidad)}</td>
-      <td><span class="editable" data-field="tarea" data-name="${name}">${r.tarea||'—'}</span></td>
+      <td>${horarioSelect(name, rm.horario, mk)}</td>
+      <td>${modalidadSelect(name, rm.modalidad, mk)}</td>
+      <td>${tareaSelect(name, r.tarea)}</td>
       <td>${prodDots(name, check)}</td>
       <td>${monitoreoBadge(mon)}</td>
       <td class="mono">${devol || '—'}</td>
@@ -1190,45 +1229,31 @@ function renderEquipo(main){
     });
   });
 
-  // inline edit for text fields (tarea/nota only — horario y modalidad usan <select>)
-  tbody.querySelectorAll('.editable').forEach(span=>{
-    span.addEventListener('click', ()=>{
-      if(!APP.isAdmin) return;
-      const name = span.dataset.name, field = span.dataset.field;
-      const current = span.textContent.trim()==='—' ? '' : span.textContent.trim();
-      const input = document.createElement('input');
-      input.type='text'; input.value=current; input.style.width='140px';
-      span.replaceWith(input);
-      input.focus();
-      const commit = async ()=>{
-        const val = input.value.trim();
-        APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {[field]: val});
-        await saveOverrides();
-        render();
-      };
-      input.addEventListener('blur', commit);
-      input.addEventListener('keydown', e=>{ if(e.key==='Enter') input.blur(); });
-    });
-  });
-
-  // horario select change
-  tbody.querySelectorAll('select[data-field="horario"]').forEach(sel=>{
+  // tarea select change
+  tbody.querySelectorAll('select[data-field="tarea"]').forEach(sel=>{
     sel.addEventListener('change', async ()=>{
       if(!APP.isAdmin) return;
       const name = sel.dataset.name;
-      APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {horario: sel.value});
+      APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {tarea: sel.value});
       await saveOverrides();
       render();
     });
   });
 
-  // modalidad select change
+  // horario select change (por mes)
+  tbody.querySelectorAll('select[data-field="horario"]').forEach(sel=>{
+    sel.addEventListener('change', async ()=>{
+      if(!APP.isAdmin) return;
+      await setRosterMonth(sel.dataset.name, sel.dataset.month, 'horario', sel.value);
+      render();
+    });
+  });
+
+  // modalidad select change (por mes)
   tbody.querySelectorAll('select[data-field="modalidad"]').forEach(sel=>{
     sel.addEventListener('change', async ()=>{
       if(!APP.isAdmin) return;
-      const name = sel.dataset.name;
-      APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {modalidad: sel.value});
-      await saveOverrides();
+      await setRosterMonth(sel.dataset.name, sel.dataset.month, 'modalidad', sel.value);
       render();
     });
   });
@@ -1251,21 +1276,30 @@ function renderEquipo(main){
   });
 }
 
-function modalidadSelect(name, current){
+function modalidadSelect(name, current, mk){
   const opts = ['Central','Home','Palomitas','1ro de Mayo','Otro'];
   const cls = modalidadClass(current);
   const list = (current && !opts.includes(current)) ? [...opts, current] : opts;
-  return `<select data-field="modalidad" data-name="${name}" class="pill ${cls}" style="border:1px solid var(--line);">
+  return `<select data-field="modalidad" data-name="${name}" data-month="${mk||''}" class="pill ${cls}" style="border:1px solid var(--line);">
     <option value="" ${!current?'selected':''}>—</option>
     ${list.map(o=>`<option value="${o}" ${current===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
 }
 const HORARIO_OPTIONS = ['12 – 19','8 – 15','7 – 14','CORTADO'];
-function horarioSelect(name, current){
+function horarioSelect(name, current, mk){
   const list = (current && !HORARIO_OPTIONS.includes(current)) ? [...HORARIO_OPTIONS, current] : HORARIO_OPTIONS;
-  return `<select data-field="horario" data-name="${name}" class="horario-select">
+  return `<select data-field="horario" data-name="${name}" data-month="${mk||''}" class="horario-select">
     <option value="" ${!current?'selected':''}>—</option>
     ${list.map(o=>`<option value="${o}" ${current===o?'selected':''}>${o}</option>`).join('')}
+  </select>`;
+}
+const TAREA_OPTIONS = ['Atención Telefónica','Comunidad fija y Whatsapp','Respuesta Mail - Apoyo','Redes','Carga de solicitudes','Línea 7075','Planes JS','Admin. Bandejas'];
+function tareaSelect(name, current){
+  const val = (current && current!=='—') ? current : '';
+  const list = (val && !TAREA_OPTIONS.includes(val)) ? [...TAREA_OPTIONS, val] : TAREA_OPTIONS;
+  return `<select data-field="tarea" data-name="${name}" class="horario-select" style="max-width:190px;">
+    <option value="" ${!val?'selected':''}>—</option>
+    ${list.map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
 }
 function prodDots(name, check){
@@ -1291,6 +1325,7 @@ function renderColaborador(main){
   if(!APP.colaborador || !NAMES.includes(APP.colaborador)) APP.colaborador = NAMES[0];
   const name = APP.colaborador;
   const r = getRoster(name);
+  const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
   const mon = getMonitoreo(name);
   const tab = APP.colabTab || 'productividad';
 
@@ -1311,13 +1346,14 @@ function renderColaborador(main){
       <div style="flex:1; min-width:200px;">
         <div style="font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--brand-dark);">${name}</div>
         <div style="display:flex; align-items:center; gap:16px; margin-top:6px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-soft);">
-          <span style="display:flex; align-items:center; gap:6px;">Horario: ${horarioSelect(name, r.horario)}</span>
-          <span>Tarea/nota: <span class="editable" data-field="tarea" data-name="${name}">${r.tarea||'—'}</span></span>
+          <span style="display:flex; align-items:center; gap:6px;">Horario (${MONTH_LABELS[CURRENT_MONTH_KEY]}): ${horarioSelect(name, rm.horario, CURRENT_MONTH_KEY)}</span>
+          <span>Tarea/nota: ${tareaSelect(name, r.tarea)}</span>
         </div>
       </div>
-      <div>${modalidadSelect(name, r.modalidad)}</div>
+      <div>${modalidadSelect(name, rm.modalidad, CURRENT_MONTH_KEY)}</div>
       <div>${monitoreoBadge(mon)}</div>
     </div>
+    <div class="foot-note" style="margin:-10px 0 16px 0;">Horario y modalidad corresponden al mes en curso. Para ver o editar otros meses, andá a Equipo y elegí el mes.</div>
 
     <div class="seg" id="colab-tabs" style="margin-bottom:16px;">
       <button data-tab="productividad" class="${tab==='productividad'?'active':''}">Productividad</button>
@@ -1345,36 +1381,22 @@ function renderColaborador(main){
     render();
   });
 
-  // header editable fields (tarea/nota)
-  main.querySelectorAll('.editable').forEach(span=>{
-    span.addEventListener('click', ()=>{
-      if(!APP.isAdmin) return;
-      const nm = span.dataset.name, field = span.dataset.field;
-      const current = span.textContent.trim()==='—' ? '' : span.textContent.trim();
-      const input = document.createElement('input');
-      input.type='text'; input.value=current; input.style.width='140px';
-      span.replaceWith(input);
-      input.focus();
-      const commit = async ()=>{
-        const val = input.value.trim();
-        APP.overrides.roster[nm] = Object.assign({}, APP.overrides.roster[nm], {[field]: val});
-        await saveOverrides();
-        render();
-      };
-      input.addEventListener('blur', commit);
-      input.addEventListener('keydown', e2=>{ if(e2.key==='Enter') input.blur(); });
-    });
+  // tarea select change
+  main.querySelector('select[data-field="tarea"]').addEventListener('change', async (e)=>{
+    if(!APP.isAdmin) return;
+    APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {tarea: e.target.value});
+    await saveOverrides();
+    render();
   });
+  // horario y modalidad se guardan para el mes en curso
   main.querySelector('select[data-field="modalidad"]').addEventListener('change', async (e)=>{
     if(!APP.isAdmin) return;
-    APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {modalidad: e.target.value});
-    await saveOverrides();
+    await setRosterMonth(name, CURRENT_MONTH_KEY, 'modalidad', e.target.value);
     render();
   });
   main.querySelector('select[data-field="horario"]').addEventListener('change', async (e)=>{
     if(!APP.isAdmin) return;
-    APP.overrides.roster[name] = Object.assign({}, APP.overrides.roster[name], {horario: e.target.value});
-    await saveOverrides();
+    await setRosterMonth(name, CURRENT_MONTH_KEY, 'horario', e.target.value);
     render();
   });
 
@@ -1467,8 +1489,8 @@ function renderColabConexion(body, name){
   const tbody = document.getElementById('colab-conex-tbody');
   dates.slice().reverse().forEach(date=>{
     const entry = getConexEntry(date, name);
-    const roster = getRoster(name);
-    const startH = parseHorarioStart(roster.horario);
+    const rm = getRosterMonth(name, monthKeyFromDate(date));
+    const startH = parseHorarioStart(rm.horario);
     const inParsed = parseHM(entry.in);
     let estado='Sin dato', cls='neutral';
     if(inParsed){
@@ -1596,10 +1618,9 @@ function openExportModal(name){
 }
 
 function generatePDFReport(name, monthKeys){
-  const r = getRoster(name);
-
   const monthBlocks = monthKeys.map(mk=>{
     const v = getMetric(name, mk);
+    const rm = getRosterMonth(name, mk);
     const dates = conexDatesSorted().filter(d=> d.slice(5,7) === String(MONTH_KEYS.indexOf(mk)+1).padStart(2,'0'));
     const conexRows = dates.map(date=>{
       const e = getConexEntry(date, name);
@@ -1610,6 +1631,10 @@ function generatePDFReport(name, monthKeys){
 
     return `
       <h2>${MONTH_LABELS[mk]}</h2>
+      <div class="meta" style="margin:-4px 0 10px;">
+        <span><b>Horario:</b> ${rm.horario||'—'}</span>
+        <span><b>Modalidad:</b> ${rm.modalidad||'—'}</span>
+      </div>
       <div class="tbl-wrap">
       <table class="tbl-metrics">
         <thead><tr><th>ATT</th><th>ACW</th><th>HOLD</th><th>TMO</th><th>Llamados</th><th>% Datos</th><th>G. Digital</th></tr></thead>
@@ -1640,8 +1665,6 @@ function generatePDFReport(name, monthKeys){
   area.innerHTML = `
     <h1>Reporte de desempeño — ${name}</h1>
     <div class="meta">
-      <span><b>Horario:</b> ${r.horario||'—'}</span>
-      <span><b>Modalidad:</b> ${r.modalidad||'—'}</span>
       <span><b>Generado:</b> ${fmtDateLong(TODAY)}</span>
     </div>
     ${monthBlocks}
