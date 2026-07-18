@@ -182,6 +182,12 @@ body.visitor-mode #colab-new-date{
 :root.dark .auth-gate{ background: rgba(0,0,0,0.65); }
 
 /* ---------- main ---------- */
+.content-col{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-width:0;
+}
 .main{
   flex:1;
   min-width:0;
@@ -271,12 +277,21 @@ tbody tr:hover{ background: #FAFBFB; }
 .badge svg{ width:11px;height:11px; }
 
 /* pills for modalidad */
-.pill{ font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; color:var(--brand); background:var(--brand-soft); }
-.pill.home, .pill.central, .pill.palomitas, .pill.mayo, .pill.other,
-.pill.tarea-1, .pill.tarea-2, .pill.tarea-3, .pill.tarea-4,
-.pill.tarea-5, .pill.tarea-6, .pill.tarea-7, .pill.tarea-8, .pill.tarea-empty{
-  background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2;
-}
+.pill{ font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid var(--line); color:var(--ink-soft); background:#fff; }
+.pill.home{ background:#EFF4FB; color:var(--accent-blue); border-color:#D9E6F5; }
+.pill.central{ background:var(--brand-soft); color:var(--brand); border-color:#CFE7E2;}
+.pill.palomitas{ background:#F3EEFB; color:#6C4FA8; border-color:#E2D6F5;}
+.pill.mayo{ background:#FBEEEE; color:#B0483F; border-color:#F2D6D3;}
+.pill.other{ background:#F5F1E9; color:#8A6B1F; border-color:#EBE0C8;}
+.pill.tarea-1{ background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2; }
+.pill.tarea-2{ background:#E3F5EE; color:#1F8F6D; border-color:#C9E9DC; }
+.pill.tarea-3{ background:#EFF4FB; color:var(--accent-blue); border-color:#D9E6F5; }
+.pill.tarea-4{ background:#F3EEFB; color:#6C4FA8; border-color:#E2D6F5; }
+.pill.tarea-5{ background: var(--accent-amber-soft); color:#8A6B1F; border-color:#F2E2B8; }
+.pill.tarea-6{ background: var(--accent-coral-soft); color:#B0483F; border-color:#F2D6D3; }
+.pill.tarea-7{ background:#EEF2F5; color:#4C7A9E; border-color:#DCE6ED; }
+.pill.tarea-8{ background:#F5F1E9; color:#8A6B1F; border-color:#EBE0C8; }
+.pill.tarea-empty{ background:#F2F5F5; color:var(--ink-soft); border-color:#E1E7E7; }
 .horario-select{ font-family:var(--font-mono); font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
 .conex-vertical th{ position:sticky; top:0; background:#F2F5F5; z-index:1; }
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
@@ -352,11 +367,39 @@ select:focus, input:focus{ border-color: var(--brand); }
 /* footer note */
 .foot-note{ margin-top: 26px; font-size:11.5px; color:var(--ink-faint); text-align:center; }
 
+.mobile-topbar{
+  display:none;
+  align-items:center; gap:12px;
+  padding:14px 16px;
+  background: linear-gradient(190deg, var(--brand-dark) 0%, #12433F 100%);
+  color:#EAF3F1;
+  position: sticky; top:0; z-index:20;
+}
+.mobile-topbar b{ font-family:var(--font-display); font-size:15px; font-weight:600; }
+.mobile-menu-btn{
+  display:flex; align-items:center; justify-content:center;
+  width:36px; height:36px; border-radius:8px; flex-shrink:0;
+  background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14);
+  color:#EAF3F1; cursor:pointer; padding:0;
+}
+.mobile-menu-btn svg{ width:19px; height:19px; }
+.sidebar-backdrop{
+  display:none;
+  position:fixed; inset:0; background:rgba(9,20,19,0.55); z-index:29;
+}
+
 @media (max-width: 980px){
   .grid-kpi{ grid-template-columns: repeat(2,1fr); }
   .grid-2{ grid-template-columns: 1fr; }
   .grid-3{ grid-template-columns: 1fr; }
-  .sidebar{ display:none; }
+  .mobile-topbar{ display:flex; }
+  .sidebar{
+    position:fixed; top:0; left:0; height:100vh; z-index:30;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+  }
+  body.sidebar-open .sidebar{ transform: translateX(0); box-shadow: 8px 0 24px rgba(0,0,0,0.28); }
+  body.sidebar-open .sidebar-backdrop{ display:block; }
   .main{ padding:18px; }
 }
 
@@ -402,6 +445,8 @@ select:focus, input:focus{ border-color: var(--brand); }
 </div>
 <div class="app">
 
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark">AT</div>
@@ -445,9 +490,17 @@ select:focus, input:focus{ border-color: var(--brand); }
     </div>
   </aside>
 
-  <main class="main" id="main">
-    <!-- views injected by JS -->
-  </main>
+  <div class="content-col">
+    <div class="mobile-topbar">
+      <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Abrir menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <b>Equipo Entrenados</b>
+    </div>
+    <main class="main" id="main">
+      <!-- views injected by JS -->
+    </main>
+  </div>
 
 </div>
 
@@ -956,6 +1009,15 @@ document.getElementById('nav').addEventListener('click', (e)=>{
   item.classList.add('active');
   APP.view = item.dataset.view;
   render();
+  document.body.classList.remove('sidebar-open');
+});
+
+/* ---------------- mobile sidebar toggle ---------------- */
+document.getElementById('mobile-menu-btn').addEventListener('click', ()=>{
+  document.body.classList.toggle('sidebar-open');
+});
+document.getElementById('sidebar-backdrop').addEventListener('click', ()=>{
+  document.body.classList.remove('sidebar-open');
 });
 
 function render(){
