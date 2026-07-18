@@ -576,24 +576,62 @@ async function loadOverrides(){
   }catch(e){ console.warn('No se pudieron cargar los datos guardados', e); }
 }
 
+function deepMergePreferLocal(remote, local){
+  if(local===undefined) return remote;
+  const isPlainObj = v => v!==null && typeof v==='object' && !Array.isArray(v);
+  if(!isPlainObj(local) || !isPlainObj(remote)) return local;
+  const out = Object.assign({}, remote);
+  Object.keys(local).forEach(k=>{ out[k] = deepMergePreferLocal(remote[k], local[k]); });
+  return out;
+}
+
 async function saveOverrides(){
   try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(APP.overrides)); }
   catch(e){ console.error('No se pudo guardar la información en este navegador', e); }
 
   if(supabaseClient){
     try{
+      // Traemos lo último del servidor y lo combinamos antes de escribir, para no
+      // pisar cambios guardados desde otra pestaña/computadora con una copia local vieja.
+      const { data: remoteRow, error: fetchError } = await supabaseClient
+        .from('dashboard_overrides')
+        .select('data')
+        .eq('id', OVERRIDES_ROW_ID)
+        .maybeSingle();
+      if(fetchError) throw fetchError;
+      const merged = (remoteRow && remoteRow.data) ? deepMergePreferLocal(remoteRow.data, APP.overrides) : APP.overrides;
       const { error } = await supabaseClient
         .from('dashboard_overrides')
-        .upsert({ id: OVERRIDES_ROW_ID, data: APP.overrides, updated_at: new Date().toISOString() });
+        .upsert({ id: OVERRIDES_ROW_ID, data: merged, updated_at: new Date().toISOString() });
       if(error) throw error;
+      APP.overrides = merged;
+      try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(APP.overrides)); }catch(e){}
       return;
-    }catch(e){ console.warn('No se pudo guardar en Supabase, se guardó solo localmente', e); }
+    }catch(e){
+      console.warn('No se pudo guardar en Supabase, se guardó solo localmente', e);
+      showSaveWarning();
+    }
   }
   try{
     if(hasCloudStorage()){
       await window.storage.set('overrides', JSON.stringify(APP.overrides), false);
     }
   }catch(e){ /* ya se guardó en localStorage arriba */ }
+}
+
+let saveWarningTimer = null;
+function showSaveWarning(){
+  let el = document.getElementById('save-warning-toast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'save-warning-toast';
+    el.style.cssText = 'position:fixed; bottom:20px; right:20px; z-index:1200; background:var(--accent-coral); color:#fff; font-size:13px; font-weight:600; padding:10px 16px; border-radius:10px; box-shadow:var(--shadow); max-width:320px;';
+    el.textContent = 'No se pudo guardar en la nube. El cambio quedó solo en este navegador.';
+    document.body.appendChild(el);
+  }
+  el.style.display = 'block';
+  clearTimeout(saveWarningTimer);
+  saveWarningTimer = setTimeout(()=>{ el.style.display = 'none'; }, 6000);
 }
 
 /* ---------------- auth ---------------- */
