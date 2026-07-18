@@ -828,18 +828,15 @@ function modalidadClass(mod){
   if(m.includes('mayo')) return 'mayo';
   return 'other';
 }
-function getRoster(name){
-  const base = RAW.roster.find(r=>r.name===name) || {};
-  const ov = APP.overrides.roster[name] || {};
-  return Object.assign({name, tarea:'—'}, base, ov);
-}
 function getRosterMonth(name, mk){
-  const base = getRoster(name);
+  // No caemos al valor "base" del roster: un mes sin datos cargados debe verse
+  // vacío (por ejemplo un mes futuro, o un año nuevo con equipo distinto) en vez
+  // de heredar el último valor conocido de otro período.
   const ov = (APP.overrides.roster_month[mk] && APP.overrides.roster_month[mk][name]) || {};
   return {
-    horario: ov.horario!==undefined ? ov.horario : base.horario,
-    modalidad: ov.modalidad!==undefined ? ov.modalidad : base.modalidad,
-    tarea: ov.tarea!==undefined ? ov.tarea : base.tarea,
+    horario: ov.horario || '',
+    modalidad: ov.modalidad || '',
+    tarea: ov.tarea || '',
   };
 }
 async function setRosterMonth(name, mk, field, value){
