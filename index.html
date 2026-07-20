@@ -284,6 +284,8 @@ tbody tr:hover{ background: #FAFBFB; }
   background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2;
 }
 .horario-select{ font-family:var(--font-mono); font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
+.bday-input{ font-family:var(--font-mono); font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
+.bday-input::-webkit-calendar-picker-indicator{ filter: invert(38%) sepia(24%) saturate(730%) hue-rotate(130deg); cursor:pointer; }
 .conex-vertical th{ position:sticky; top:0; background:#F2F5F5; z-index:1; }
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
 .conex-vertical input{ text-align:center; padding:5px 4px; }
@@ -347,6 +349,8 @@ select:focus, input:focus{ border-color: var(--brand); }
 .banner b{ font-weight:700; }
 .banner-close{ margin-left:auto; background:none; border:none; cursor:pointer; color:inherit; opacity:0.6; font-size:16px; line-height:1; padding:2px 6px; flex-shrink:0; }
 .banner-close:hover{ opacity:1; }
+.banner-ok{ background:var(--brand-soft); border-color:#CFE7E2; color:var(--brand-dark); }
+:root.dark .banner-ok{ color:#8FE4CE; }
 
 /* scrollable panel for conex timeline */
 .scroll-x{ overflow-x:auto; }
@@ -525,8 +529,8 @@ const APP = {
   conexDateIdx: null,
   colaborador: null,
   colabTab: 'productividad',
-  bannerDismissed: { resumen:false, monitoreos:false },
-  overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, inbox:{}, nameRenames:{} },
+  bannerDismissed: { resumen:false, monitoreos:false, birthdays:false },
+  overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, inbox:{}, nameRenames:{}, birthdays:{} },
 };
 const METRIC_FIELDS = ['ATT','ACW','HOLD','TMO','Llamados','ActDatos','GDigital','Nota'];
 const METRIC_LABELS = {ATT:'ATT', ACW:'ACW', HOLD:'HOLD', TMO:'TMO', Llamados:'Llamados', ActDatos:'% Datos', GDigital:'G. Digital', Nota:'Nota'};
@@ -536,7 +540,7 @@ const LOCAL_KEY = 'torre-control-overrides';
 const SUPABASE_URL = 'https://kakjzaviulnccldccucl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_AAPMZ4poPfvsJuYuKBW7rA_o5dMn5ND';
 const OVERRIDES_ROW_ID = 'main';
-const DEFAULT_OVERRIDES = {roster:{},roster_month:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},inbox:{},nameRenames:{}};
+const DEFAULT_OVERRIDES = {roster:{},roster_month:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},inbox:{},nameRenames:{},birthdays:{}};
 const supabaseClient = (typeof window.supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
@@ -973,6 +977,7 @@ function migrateName(oldName, newName){
   rekeyProp(APP.overrides.devol1, oldName, newName);
   rekeyProp(APP.overrides.devol2, oldName, newName);
   rekeyProp(APP.overrides.inbox, oldName, newName);
+  rekeyProp(APP.overrides.birthdays, oldName, newName);
 
   if(COLOR[oldName]!=null){ COLOR[newName] = COLOR[oldName]; delete COLOR[oldName]; }
   const idx = NAMES.indexOf(oldName);
@@ -1049,6 +1054,82 @@ async function setDevol1(name, value){
   if(!APP.isAdmin) return;
   APP.overrides.devol1[name] = value;
   await saveOverrides();
+}
+function getBirthday(name){
+  return (APP.overrides.birthdays && APP.overrides.birthdays[name]) || null; // 'YYYY-MM-DD', año orientativo
+}
+async function setBirthday(name, value){
+  if(!APP.isAdmin) return;
+  if(!APP.overrides.birthdays) APP.overrides.birthdays = {};
+  APP.overrides.birthdays[name] = value || null;
+  await saveOverrides();
+}
+const WEEKDAY_LABELS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+function stripTime(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function startOfWeek(d){
+  const date = stripTime(d);
+  const dow = date.getDay(); // 0=domingo..6=sábado
+  const diffToMonday = (dow===0) ? -6 : 1-dow;
+  date.setDate(date.getDate()+diffToMonday);
+  return date;
+}
+function endOfWeek(d){
+  const s = startOfWeek(d);
+  const e = new Date(s);
+  e.setDate(s.getDate()+6);
+  return e;
+}
+// Busca la ocurrencia (año actual, anterior o siguiente) del mes/día de cumpleaños
+// más cercana a "ref", para poder detectar cumpleaños cerca de un cambio de año.
+function nearestBirthdayOccurrence(mm, dd, ref){
+  let best = null, bestDiff = Infinity;
+  for(let y=ref.getFullYear()-1; y<=ref.getFullYear()+1; y++){
+    const occ = new Date(y, mm-1, dd);
+    const diff = Math.round((occ - ref) / 86400000);
+    if(Math.abs(diff) < Math.abs(bestDiff)){ best = occ; bestDiff = diff; }
+  }
+  return { date: best, diffDays: bestDiff };
+}
+// Cumpleaños de hoy, y cumpleaños de esta semana (lun-dom) o de mañana (por si
+// la semana ya terminó pero el cumpleaños es al día siguiente).
+function computeBirthdayAlerts(){
+  const today = stripTime(TODAY);
+  const wStart = startOfWeek(today), wEnd = endOfWeek(today);
+  const todayList = [];
+  const weekList = [];
+  NAMES.forEach(name=>{
+    const b = getBirthday(name);
+    if(!b) return;
+    const parts = b.split('-').map(Number);
+    if(parts.length<3 || !parts[1] || !parts[2]) return;
+    const [, mm, dd] = parts;
+    const { date: occ, diffDays } = nearestBirthdayOccurrence(mm, dd, today);
+    if(diffDays===0){ todayList.push(name); return; }
+    if(diffDays>0 && ((occ>=wStart && occ<=wEnd) || diffDays===1)){
+      weekList.push({ name, date: occ, diffDays });
+    }
+  });
+  weekList.sort((a,b)=>a.diffDays-b.diffDays);
+  return { todayList, weekList };
+}
+function birthdayBannerHtml(){
+  const { todayList, weekList } = computeBirthdayAlerts();
+  if(!todayList.length && !weekList.length) return '';
+  if(APP.bannerDismissed.birthdays) return '';
+  const parts = [];
+  if(todayList.length){
+    parts.push(`<b>¡Hoy cumple${todayList.length>1?'n':''} años ${todayList.join(', ')}!</b>`);
+  }
+  if(weekList.length){
+    const txt = weekList.map(r=> `${r.name} (${WEEKDAY_LABELS[r.date.getDay()]})`).join(', ');
+    parts.push(`${todayList.length?'También esta':'Esta'} semana cumple${weekList.length>1?'n':''} años: ${txt}.`);
+  }
+  return `
+    <div class="banner banner-ok">
+      <span style="font-size:18px; line-height:1;">🎂</span>
+      <span>${parts.join(' ')}</span>
+      <button class="banner-close" data-banner="birthdays" title="Cerrar">✕</button>
+    </div>`;
 }
 function getDevol2(name){
   const ov = APP.overrides.devol2[name];
@@ -1202,6 +1283,8 @@ function renderResumen(main){
       </div>
     </div>
 
+    ${birthdayBannerHtml()}
+
     ${atrasados.length && !APP.bannerDismissed.resumen ? `
     <div class="banner">
       ${iconAlert()}
@@ -1350,6 +1433,9 @@ function renderEquipo(main){
         <p>Horarios, modalidad de trabajo y seguimiento de tareas. Horario, modalidad y tarea se guardan por mes, porque cambian según el período. Hacé clic en un dato para editarlo. Usá el lápiz junto al nombre para renombrar a una persona (por ejemplo, al cambiar de integrantes).</p>
       </div>
     </div>
+
+    ${birthdayBannerHtml()}
+
     <div class="card" style="margin-bottom:16px;">
       <div class="scroll-x">
         <div class="seg" id="equipo-month-tabs" style="width:max-content;">
@@ -1363,7 +1449,7 @@ function renderEquipo(main){
         <thead>
           <tr>
             <th>Nombre</th><th>Horario <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Modalidad <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Tarea <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th>
-            <th>Productividad ${new Date().getFullYear()}</th><th>Último monitoreo</th><th>Devolución 1er sem.</th>
+            <th>Productividad ${new Date().getFullYear()}</th><th>Último monitoreo</th><th>Devolución 1er sem.</th><th>Cumpleaños</th>
           </tr>
         </thead>
         <tbody id="equipo-tbody"></tbody>
@@ -1384,6 +1470,7 @@ function renderEquipo(main){
     const mon = getMonitoreo(name);
     const check = getProdCheck(name);
     const devol = getDevol1(name);
+    const bday = getBirthday(name);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
@@ -1400,6 +1487,7 @@ function renderEquipo(main){
       <td>${prodDots(name, check)}</td>
       <td>${monitoreoBadge(mon)}</td>
       <td class="mono">${devol || '—'}</td>
+      <td><input type="date" class="bday-input" data-name="${name}" value="${bday||''}"></td>
     `;
     tbody.appendChild(tr);
   });
@@ -1415,6 +1503,15 @@ function renderEquipo(main){
       if(nuevo==null) return;
       const ok = await renamePerson(name, nuevo);
       if(ok) render();
+    });
+  });
+
+  // cumpleaños (fecha elegida con el selector nativo del navegador)
+  tbody.querySelectorAll('.bday-input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      if(!APP.isAdmin) return;
+      await setBirthday(inp.dataset.name, inp.value);
+      render();
     });
   });
 
@@ -1968,7 +2065,7 @@ function renderMonitoreos(main){
         <p>Seguimiento del monitoreo de escucha y de las devoluciones de desempeño por colaborador.</p>
       </div>
     </div>
-    ${atrasados.length && !APP.bannerDismissed.monitoreos ? `<div class="banner">${iconAlert()} <span><b>${atrasados.length}</b> colaborador${atrasados.length>1?'es':''} llevan más de 7 días sin monitoreo.</span><button class="banner-close" data-banner="monitoreos" title="Cerrar">✕</button></div>` : (!atrasados.length ? `<div class="banner" style="background:var(--brand-soft); border-color:#CFE7E2; color:var(--brand-dark);">${iconOk()} <span>Todo el equipo está al día con sus monitoreos.</span></div>` : '')}
+    ${atrasados.length && !APP.bannerDismissed.monitoreos ? `<div class="banner">${iconAlert()} <span><b>${atrasados.length}</b> colaborador${atrasados.length>1?'es':''} llevan más de 7 días sin monitoreo.</span><button class="banner-close" data-banner="monitoreos" title="Cerrar">✕</button></div>` : (!atrasados.length ? `<div class="banner banner-ok">${iconOk()} <span>Todo el equipo está al día con sus monitoreos.</span></div>` : '')}
     <div class="card" style="margin-bottom:16px;">
       <h3>Monitoreo de escucha</h3>
       <div class="scroll-x">
