@@ -284,8 +284,7 @@ tbody tr:hover{ background: #FAFBFB; }
   background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2;
 }
 .horario-select{ font-family:var(--font-mono); font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
-.bday-input{ font-family:var(--font-mono); font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
-.bday-input::-webkit-calendar-picker-indicator{ filter: invert(38%) sepia(24%) saturate(730%) hue-rotate(130deg); cursor:pointer; }
+.bday-select{ font-family:var(--font-mono); font-size:13px; font-weight:600; padding:4px 8px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
 .conex-vertical th{ position:sticky; top:0; background:#F2F5F5; z-index:1; }
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
 .conex-vertical input{ text-align:center; padding:5px 4px; }
@@ -1056,12 +1055,28 @@ async function setDevol1(name, value){
   await saveOverrides();
 }
 function getBirthday(name){
-  return (APP.overrides.birthdays && APP.overrides.birthdays[name]) || null; // 'YYYY-MM-DD', año orientativo
+  return (APP.overrides.birthdays && APP.overrides.birthdays[name]) || null; // 'MM-DD' (o 'YYYY-MM-DD' de versiones viejas)
 }
-async function setBirthday(name, value){
+// El año no importa para un cumpleaños; tolera el formato viejo con año adelante.
+function parseBirthdayMD(raw){
+  if(!raw) return null;
+  const parts = raw.split('-');
+  const [mm, dd] = parts.length===3 ? [Number(parts[1]), Number(parts[2])] : [Number(parts[0]), Number(parts[1])];
+  return (mm && dd) ? { mm, dd } : null;
+}
+function daysInMonthGeneric(mm){
+  const days = [31,29,31,30,31,30,31,31,30,31,30,31]; // febrero con 29 para permitir cumpleaños 29/feb
+  return days[mm-1] || 31;
+}
+async function setBirthday(name, mm, dd){
   if(!APP.isAdmin) return;
   if(!APP.overrides.birthdays) APP.overrides.birthdays = {};
-  APP.overrides.birthdays[name] = value || null;
+  if(mm && dd){
+    dd = Math.min(dd, daysInMonthGeneric(mm));
+    APP.overrides.birthdays[name] = `${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+  }else{
+    APP.overrides.birthdays[name] = null;
+  }
   await saveOverrides();
 }
 const WEEKDAY_LABELS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
@@ -1098,12 +1113,9 @@ function computeBirthdayAlerts(){
   const todayList = [];
   const weekList = [];
   NAMES.forEach(name=>{
-    const b = getBirthday(name);
-    if(!b) return;
-    const parts = b.split('-').map(Number);
-    if(parts.length<3 || !parts[1] || !parts[2]) return;
-    const [, mm, dd] = parts;
-    const { date: occ, diffDays } = nearestBirthdayOccurrence(mm, dd, today);
+    const md = parseBirthdayMD(getBirthday(name));
+    if(!md) return;
+    const { date: occ, diffDays } = nearestBirthdayOccurrence(md.mm, md.dd, today);
     if(diffDays===0){ todayList.push(name); return; }
     if(diffDays>0 && ((occ>=wStart && occ<=wEnd) || diffDays===1)){
       weekList.push({ name, date: occ, diffDays });
@@ -1487,7 +1499,7 @@ function renderEquipo(main){
       <td>${prodDots(name, check)}</td>
       <td>${monitoreoBadge(mon)}</td>
       <td class="mono">${devol || '—'}</td>
-      <td><input type="date" class="bday-input" data-name="${name}" value="${bday||''}"></td>
+      <td>${birthdaySelects(name, bday)}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -1506,11 +1518,21 @@ function renderEquipo(main){
     });
   });
 
-  // cumpleaños (fecha elegida con el selector nativo del navegador)
-  tbody.querySelectorAll('.bday-input').forEach(inp=>{
-    inp.addEventListener('change', async ()=>{
+  // cumpleaños (día y mes elegidos de una lista, sin año)
+  tbody.querySelectorAll('.bday-select').forEach(sel=>{
+    sel.addEventListener('change', async ()=>{
       if(!APP.isAdmin) return;
-      await setBirthday(inp.dataset.name, inp.value);
+      const name = sel.dataset.name;
+      const row = sel.closest('tr');
+      const dayVal = row.querySelector('.bday-select[data-part="day"]').value;
+      const monthVal = row.querySelector('.bday-select[data-part="month"]').value;
+      const bothEmpty = !dayVal && !monthVal;
+      const bothFilled = dayVal && monthVal;
+      // Si solo se completó uno de los dos campos, esperamos al otro antes de guardar:
+      // si guardáramos y re-renderizáramos ahora, el campo recién elegido se resetearía
+      // (no hay cumpleaños válido con un solo dato) y se perdería la selección en curso.
+      if(!bothEmpty && !bothFilled) return;
+      await setBirthday(name, monthVal ? Number(monthVal) : null, dayVal ? Number(dayVal) : null);
       render();
     });
   });
@@ -1576,6 +1598,21 @@ function horarioSelect(name, current, mk){
     <option value="" ${!current?'selected':''}>—</option>
     ${list.map(o=>`<option value="${o}" ${current===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
+}
+function birthdaySelects(name, raw){
+  const md = parseBirthdayMD(raw) || {};
+  const dayCount = md.mm ? daysInMonthGeneric(md.mm) : 31;
+  const dayOpts = Array.from({length:dayCount}, (_,i)=>i+1);
+  return `<div style="display:flex; gap:4px;">
+    <select class="bday-select" data-part="day" data-name="${name}">
+      <option value="" ${!md.dd?'selected':''}>Día</option>
+      ${dayOpts.map(d=>`<option value="${d}" ${md.dd===d?'selected':''}>${d}</option>`).join('')}
+    </select>
+    <select class="bday-select" data-part="month" data-name="${name}">
+      <option value="" ${!md.mm?'selected':''}>Mes</option>
+      ${MONTH_KEYS.map((mk2,i)=>`<option value="${i+1}" ${md.mm===i+1?'selected':''}>${MONTH_LABELS[mk2].slice(0,3)}</option>`).join('')}
+    </select>
+  </div>`;
 }
 const TAREA_OPTIONS = ['Atención Telefónica','Comunidad fija - Whatsapp','Respuesta Mail - Apoyo','Redes','Carga de solicitudes','Línea 7075','Planes JS','Admin. Bandejas'];
 function tareaClass(t){
