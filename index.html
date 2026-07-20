@@ -587,17 +587,44 @@ function deepMergePreferLocal(remote, local){
 
 let saveInFlight = false;
 let saveQueued = false;
+let saveDebounceTimer = null;
+let pendingWrites = 0; // cambios hechos desde el último guardado confirmado en Supabase
+const SAVE_DEBOUNCE_MS = 600;
 
-async function saveOverrides(){
+// Si el usuario recarga o cierra la pestaña mientras hay cambios sin confirmar
+// en Supabase, el refresh cancela cualquier pedido en curso y la carga
+// siguiente trae de vuelta los datos viejos, perdiendo la edición para
+// siempre (ni en la nube ni en este navegador). Avisamos antes de irse.
+window.addEventListener('beforeunload', (e)=>{
+  if(pendingWrites > 0){
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+function saveOverrides(){
   try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(APP.overrides)); }
   catch(e){ console.error('No se pudo guardar la información en este navegador', e); }
 
-  // Serializamos los guardados: si ya hay uno en curso (por ej. el usuario pintó
-  // muchas celdas seguidas), no disparamos otro round-trip en paralelo. Solo
-  // marcamos que hace falta una vuelta más al terminar la actual, y esa vuelta
-  // va a leer el estado más reciente de APP.overrides. Esto evita que un guardado
-  // que arrancó antes pero termina después pise con una foto vieja los cambios
-  // hechos mientras estaba en curso.
+  pendingWrites++;
+  updateSaveStatus('saving');
+  // Juntamos ediciones seguidas (por ej. pintar muchas celdas rápido) en un
+  // solo guardado en vez de un round-trip a Supabase por clic: así el total
+  // de cambios queda confirmado en la nube mucho más rápido, y hay menos
+  // ventana de tiempo en la que un refresh puede perder algo.
+  clearTimeout(saveDebounceTimer);
+  saveDebounceTimer = setTimeout(flushOverrides, SAVE_DEBOUNCE_MS);
+  return Promise.resolve();
+}
+
+async function flushOverrides(){
+  clearTimeout(saveDebounceTimer);
+  saveDebounceTimer = null;
+  // Serializamos los guardados: si ya hay uno en curso, no disparamos otro
+  // round-trip en paralelo. Solo marcamos que hace falta una vuelta más al
+  // terminar la actual, y esa vuelta va a leer el estado más reciente de
+  // APP.overrides. Esto evita que un guardado que arrancó antes pero termina
+  // después pise con una foto vieja los cambios hechos mientras estaba en curso.
   if(saveInFlight){ saveQueued = true; return; }
   saveInFlight = true;
   do{
@@ -625,23 +652,73 @@ async function persistOverridesToBackend(){
       if(error) throw error;
       // Si mientras esperábamos la respuesta llegó una edición nueva (saveQueued),
       // no adoptamos esta foto: ya quedó vieja. La dejamos pasar y la próxima
-      // vuelta del loop en saveOverrides() va a guardar el estado actual completo.
+      // vuelta del loop de arriba va a guardar el estado actual completo.
       if(!saveQueued){
         APP.overrides = merged;
         try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(APP.overrides)); }catch(e){}
+        pendingWrites = 0;
+        updateSaveStatus('saved');
       }
       return;
     }catch(e){
       console.warn('No se pudo guardar en Supabase, se guardó solo localmente', e);
       showSaveWarning();
+      updateSaveStatus('error');
       return;
     }
   }
-  try{
-    if(hasCloudStorage()){
+  if(hasCloudStorage()){
+    try{
       await window.storage.set('overrides', JSON.stringify(APP.overrides), false);
-    }
-  }catch(e){ /* ya se guardó en localStorage arriba */ }
+      pendingWrites = 0;
+      updateSaveStatus('saved');
+    }catch(e){ /* ya se guardó en localStorage arriba */ }
+    return;
+  }
+  // No hay ningún backend en la nube configurado: lo único que existe es la
+  // copia en este navegador (ya guardada arriba). No tiene sentido seguir
+  // marcando la edición como "pendiente" ni bloquear el refresh para siempre.
+  pendingWrites = 0;
+  updateSaveStatus('local-only');
+}
+
+let saveStatusHideTimer = null;
+function updateSaveStatus(state){
+  let el = document.getElementById('save-status-badge');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'save-status-badge';
+    el.style.cssText = 'position:fixed; bottom:76px; right:20px; z-index:1200; font-size:12px; font-weight:600; padding:7px 14px; border-radius:20px; box-shadow:var(--shadow); transition:opacity .2s;';
+    document.body.appendChild(el);
+  }
+  clearTimeout(saveStatusHideTimer);
+  if(state==='saving'){
+    el.textContent = 'Guardando cambios…';
+    el.style.background = 'var(--brand-soft)';
+    el.style.color = 'var(--brand)';
+    el.style.display = 'block';
+    el.style.opacity = '1';
+  }else if(state==='saved'){
+    el.textContent = 'Cambios guardados ✓';
+    el.style.background = 'var(--brand-soft)';
+    el.style.color = 'var(--brand)';
+    el.style.display = 'block';
+    el.style.opacity = '1';
+    saveStatusHideTimer = setTimeout(()=>{ el.style.opacity = '0'; }, 1500);
+  }else if(state==='error'){
+    el.textContent = 'No se guardó en la nube todavía';
+    el.style.background = 'var(--accent-coral-soft)';
+    el.style.color = 'var(--accent-coral)';
+    el.style.display = 'block';
+    el.style.opacity = '1';
+  }else if(state==='local-only'){
+    el.textContent = 'Guardado solo en este navegador';
+    el.style.background = 'var(--brand-soft)';
+    el.style.color = 'var(--brand)';
+    el.style.display = 'block';
+    el.style.opacity = '1';
+    saveStatusHideTimer = setTimeout(()=>{ el.style.opacity = '0'; }, 1500);
+  }
 }
 
 let saveWarningTimer = null;
