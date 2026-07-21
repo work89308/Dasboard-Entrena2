@@ -1181,7 +1181,7 @@ function devolCheckDot(name, field, value){
   let bg='#E7ECEC', title='Sin dato';
   if(value==='si'){ bg='#3FAE96'; title='Realizada'; }
   else if(value==='no'){ bg='#D65B45'; title='No realizada'; }
-  return `<div class="devol-dot" data-name="${name}" data-field="${field}" title="${title}" style="width:14px;height:14px;border-radius:4px;background:${bg};"></div>`;
+  return `<div class="devol-dot" data-name="${name}" data-field="${field}" title="${title}" style="width:11px;height:11px;border-radius:3px;background:${bg};"></div>`;
 }
 function getInboxCheck(name){
   return APP.overrides.inbox[name] || {};
