@@ -152,6 +152,7 @@ body.visitor-mode #devol2-fecha,
 body.visitor-mode #devol2-confeccion,
 body.visitor-mode .devol1-input,
 body.visitor-mode .devol2-input,
+body.visitor-mode .devol-dot,
 body.visitor-mode #colab-add-date,
 body.visitor-mode #colab-new-date{
   pointer-events:none; opacity:.55; cursor:default;
@@ -305,6 +306,9 @@ tbody tr:hover{ background: #FAFBFB; }
 
 /* inbox dots */
 .inbox-dot{ width:11px; height:11px; border-radius:3px; cursor:pointer; }
+
+/* devolución check (Equipo) */
+.devol-dot{ cursor:pointer; margin:0 auto; }
 
 /* self-drawn charts (no external library, always render) */
 .rankbar-row{ display:flex; align-items:center; gap:10px; margin-bottom:9px; }
@@ -530,7 +534,7 @@ const APP = {
   colaborador: null,
   colabTab: 'productividad',
   bannerDismissed: { resumen:false, monitoreos:false, birthdays:false },
-  overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, inbox:{}, nameRenames:{}, birthdays:{} },
+  overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, devol1_check:{}, devol2_check:{}, inbox:{}, nameRenames:{}, birthdays:{} },
 };
 const METRIC_FIELDS = ['ATT','ACW','HOLD','TMO','Llamados','ActDatos','GDigital','Nota'];
 const METRIC_LABELS = {ATT:'ATT', ACW:'ACW', HOLD:'HOLD', TMO:'TMO', Llamados:'Llamados', ActDatos:'% Datos', GDigital:'G. Digital', Nota:'Nota'};
@@ -540,7 +544,7 @@ const LOCAL_KEY = 'torre-control-overrides';
 const SUPABASE_URL = 'https://kakjzaviulnccldccucl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_AAPMZ4poPfvsJuYuKBW7rA_o5dMn5ND';
 const OVERRIDES_ROW_ID = 'main';
-const DEFAULT_OVERRIDES = {roster:{},roster_month:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},inbox:{},nameRenames:{},birthdays:{}};
+const DEFAULT_OVERRIDES = {roster:{},roster_month:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},devol1_check:{},devol2_check:{},inbox:{},nameRenames:{},birthdays:{}};
 const supabaseClient = (typeof window.supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
@@ -976,6 +980,8 @@ function migrateName(oldName, newName){
   Object.keys(APP.overrides.conex||{}).forEach(date=> rekeyProp(APP.overrides.conex[date], oldName, newName));
   rekeyProp(APP.overrides.devol1, oldName, newName);
   rekeyProp(APP.overrides.devol2, oldName, newName);
+  rekeyProp(APP.overrides.devol1_check, oldName, newName);
+  rekeyProp(APP.overrides.devol2_check, oldName, newName);
   rekeyProp(APP.overrides.inbox, oldName, newName);
   rekeyProp(APP.overrides.birthdays, oldName, newName);
 
@@ -1154,6 +1160,28 @@ async function setDevol2(name, field, value){
   cur[field] = value;
   APP.overrides.devol2[name] = cur;
   await saveOverrides();
+}
+function getDevol1Check(name){
+  return APP.overrides.devol1_check[name] || null; // 'si' | 'no' | null
+}
+async function setDevol1Check(name, value){
+  if(!APP.isAdmin) return;
+  APP.overrides.devol1_check[name] = value;
+  await saveOverrides();
+}
+function getDevol2Check(name){
+  return APP.overrides.devol2_check[name] || null; // 'si' | 'no' | null
+}
+async function setDevol2Check(name, value){
+  if(!APP.isAdmin) return;
+  APP.overrides.devol2_check[name] = value;
+  await saveOverrides();
+}
+function devolCheckDot(name, field, value){
+  let bg='#E7ECEC', title='Sin dato';
+  if(value==='si'){ bg='#3FAE96'; title='Realizada'; }
+  else if(value==='no'){ bg='#D65B45'; title='No realizada'; }
+  return `<div class="devol-dot" data-name="${name}" data-field="${field}" title="${title}" style="width:14px;height:14px;border-radius:4px;background:${bg};"></div>`;
 }
 function getInboxCheck(name){
   return APP.overrides.inbox[name] || {};
@@ -1470,11 +1498,16 @@ function renderEquipo(main){
         <thead>
           <tr>
             <th>Nombre</th><th>Horario <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Modalidad <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th><th>Tarea <span style="font-weight:500; color:var(--ink-faint);">(${MONTH_LABELS[mk]})</span></th>
-            <th>Productividad ${new Date().getFullYear()}</th><th>Último monitoreo</th><th>Devolución 1er sem.</th><th>Cumpleaños</th>
+            <th>Productividad ${new Date().getFullYear()}</th><th>Último monitoreo</th><th title="Devolución 1er semestre">Dev1</th><th title="Devolución 2">Dev2</th><th>Cumpleaños</th>
           </tr>
         </thead>
         <tbody id="equipo-tbody"></tbody>
       </table>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--ink-soft);">
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3FAE96;display:inline-block;"></span>Dev1/Dev2 realizada</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#D65B45;display:inline-block;"></span>No realizada</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#E7ECEC;display:inline-block;"></span>Sin dato</span>
       </div>
     </div>
     <div class="foot-note">Los cambios se guardan automáticamente en Supabase.</div>
@@ -1490,7 +1523,8 @@ function renderEquipo(main){
     const rm = getRosterMonth(name, mk);
     const mon = getMonitoreo(name);
     const check = getProdCheck(name);
-    const devol = getDevol1(name);
+    const d1check = getDevol1Check(name);
+    const d2check = getDevol2Check(name);
     const bday = getBirthday(name);
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1507,7 +1541,8 @@ function renderEquipo(main){
       <td>${tareaSelect(name, rm.tarea, mk)}</td>
       <td>${prodDots(name, check)}</td>
       <td>${monitoreoBadge(mon)}</td>
-      <td class="mono">${devol || '—'}</td>
+      <td style="text-align:center;">${devolCheckDot(name, '1', d1check)}</td>
+      <td style="text-align:center;">${devolCheckDot(name, '2', d2check)}</td>
       <td>${birthdaySelects(name, bday)}</td>
     `;
     tbody.appendChild(tr);
@@ -1586,6 +1621,20 @@ function renderEquipo(main){
       if(!APP.overrides.prod_check[name]) APP.overrides.prod_check[name]={};
       APP.overrides.prod_check[name][mkey]=next;
       await saveOverrides();
+      render();
+    });
+  });
+
+  // devolución 1 y 2: cuadradito a marcar (realizada / no realizada / sin dato)
+  tbody.querySelectorAll('.devol-dot').forEach(dot=>{
+    dot.addEventListener('click', async ()=>{
+      if(!APP.isAdmin) return;
+      const name = dot.dataset.name, field = dot.dataset.field;
+      const getter = field==='1' ? getDevol1Check : getDevol2Check;
+      const setter = field==='1' ? setDevol1Check : setDevol2Check;
+      const cur = getter(name);
+      const next = cur==='si' ? 'no' : (cur==='no' ? null : 'si');
+      await setter(name, next);
       render();
     });
   });
@@ -2123,23 +2172,22 @@ function renderMonitoreos(main){
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:16px;">
-      <h3>Inbox <span class="sub">Auditoría personal (escucha en vivo) · hacé clic en un mes para marcarlo</span></h3>
-      <div class="scroll-x">
-      <table>
-        <thead><tr><th>Nombre</th><th>Estado por mes</th></tr></thead>
-        <tbody id="inbox-tbody"></tbody>
-      </table>
+    <div class="grid grid-3">
+      <div class="card">
+        <h3>Inbox <span class="sub">Escucha en vivo · clic en un mes para marcarlo</span></h3>
+        <div class="scroll-x">
+        <table>
+          <thead><tr><th>Nombre</th><th>Estado por mes</th></tr></thead>
+          <tbody id="inbox-tbody"></tbody>
+        </table>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--ink-soft);">
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3FAE96;display:inline-block;"></span>Realizada</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#D65B45;display:inline-block;"></span>No realizada</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3A6EA5;display:inline-block;"></span>Home Office</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#E7ECEC;display:inline-block;"></span>Sin dato</span>
+        </div>
       </div>
-      <div style="margin-top:10px; display:flex; gap:14px; font-size:11px; color:var(--ink-soft);">
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3FAE96;display:inline-block;"></span>Realizada</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#D65B45;display:inline-block;"></span>No realizada</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3A6EA5;display:inline-block;"></span>Home Office</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#E7ECEC;display:inline-block;"></span>Sin dato</span>
-      </div>
-    </div>
-
-    <div class="grid grid-2">
       <div class="card">
         <h3>Devolución 1er semestre</h3>
         <div class="scroll-x">
