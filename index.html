@@ -903,11 +903,6 @@ function monthKeyFromDate(iso){
   const monthNum = parseInt(iso.slice(5,7),10);
   return MONTH_KEYS[monthNum-1];
 }
-function fmtDateDMY(iso){
-  if(!iso) return '';
-  const [y,m,d] = iso.split('-');
-  return `${d}-${m}-${y}`;
-}
 function fmtDateCompact(iso){
   const d = new Date(iso+'T00:00:00');
   const wd = d.toLocaleDateString('es-AR', {weekday:'short'}).replace(/\.$/,'');
@@ -2162,17 +2157,16 @@ function renderMonitoreos(main){
       </div>
     </div>
     ${atrasados.length && !APP.bannerDismissed.monitoreos ? `<div class="banner">${iconAlert()} <span><b>${atrasados.length}</b> colaborador${atrasados.length>1?'es':''} llevan más de 14 días sin monitoreo.</span><button class="banner-close" data-banner="monitoreos" title="Cerrar">✕</button></div>` : (!atrasados.length ? `<div class="banner banner-ok">${iconOk()} <span>Todo el equipo está al día con sus monitoreos.</span></div>` : '')}
-    <div class="card" style="margin-bottom:16px;">
-      <h3>Monitoreo de escucha</h3>
-      <div class="scroll-x">
-      <table>
-        <thead><tr><th>Nombre</th><th>Último monitoreo</th><th>Días desde</th><th>Estado</th><th>Actualizar fecha</th></tr></thead>
-        <tbody id="mon-tbody"></tbody>
-      </table>
+    <div class="grid grid-2" style="grid-template-columns:1fr 1.5fr; margin-bottom:16px;">
+      <div class="card">
+        <h3>Monitoreo de escucha</h3>
+        <div class="scroll-x">
+        <table>
+          <thead><tr><th>Nombre</th><th>Estado</th><th>Actualizar fecha</th></tr></thead>
+          <tbody id="mon-tbody"></tbody>
+        </table>
+        </div>
       </div>
-    </div>
-
-    <div class="grid grid-3">
       <div class="card">
         <h3>Inbox <span class="sub">Escucha en vivo · clic en un mes para marcarlo</span></h3>
         <div class="scroll-x">
@@ -2188,6 +2182,9 @@ function renderMonitoreos(main){
           <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#E7ECEC;display:inline-block;"></span>Sin dato</span>
         </div>
       </div>
+    </div>
+
+    <div class="grid grid-2">
       <div class="card">
         <h3>Devolución 1er semestre</h3>
         <div class="scroll-x">
@@ -2214,8 +2211,6 @@ function renderMonitoreos(main){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><div class="name-cell" style="cursor:pointer;" data-open="${r.name}">${avatar(r.name)} ${r.name}</div></td>
-      <td class="mono">${fmtDateDMY(r.ultimo) || '—'}</td>
-      <td class="mono">${r.dias!=null? r.dias+' días':'—'}</td>
       <td>${monitoreoBadge(r)}</td>
       <td><input type="date" data-name="${r.name}" value="${r.ultimo||''}"></td>
     `;
