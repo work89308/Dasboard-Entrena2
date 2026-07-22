@@ -1649,7 +1649,7 @@ function modalidadSelect(name, current, mk){
     ${list.map(o=>`<option value="${o}" ${current===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
 }
-const HORARIO_OPTIONS = ['12 – 19','8 – 15','7 – 14','CORTADO'];
+const HORARIO_OPTIONS = ['12 – 19','9 – 16','8 – 15','7 – 14','CORTADO'];
 function horarioSelect(name, current, mk){
   const list = (current && !HORARIO_OPTIONS.includes(current)) ? [...HORARIO_OPTIONS, current] : HORARIO_OPTIONS;
   return `<select data-field="horario" data-name="${name}" data-month="${mk||''}" class="horario-select">
