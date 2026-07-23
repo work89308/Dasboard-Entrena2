@@ -1410,9 +1410,9 @@ function renderResumen(main){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name)} <span>${name}</span></div></td>
-      <td class="mono">${rm.horario||'—'}</td>
+      <td><span class="pill">${rm.horario||'—'}</span></td>
       <td><span class="pill ${modalidadClass(rm.modalidad)}">${rm.modalidad||'—'}</span></td>
-      <td style="color:var(--ink-soft); font-size:12.5px;">${rm.tarea||'—'}</td>
+      <td><span class="pill ${tareaClass(rm.tarea)}">${rm.tarea||'—'}</span></td>
       <td>${prodDots(name, check)}</td>
       <td>${monitoreoBadge(m)}</td>
     `;
@@ -1661,7 +1661,7 @@ function renderEquipo(main){
   const notasList = document.getElementById('equipo-notas-list');
   const notas = getEquipoNotas();
   notasList.innerHTML = notas.length ? notas.map(n=>`
-    <div style="display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px dashed var(--line);">
+    <div style="display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px dashed var(--line); font-size:13px;">
       <span class="mono" style="color:var(--ink-faint); flex-shrink:0; padding-top:1px;">${n.fecha ? fmtDateShort(n.fecha) : '—'}</span>
       <span style="flex:1;">${n.texto}</span>
       <button class="name-edit-btn" data-id="${n.id}" title="Eliminar nota" style="flex-shrink:0;">
