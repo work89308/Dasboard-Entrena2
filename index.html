@@ -52,7 +52,7 @@
 :root.dark .rankbar-track{ background:#1D2A2B; }
 :root.dark .seg{ background:#1D2A2B; }
 :root.dark .seg button.active{ background:#243334; }
-:root.dark select, :root.dark input[type="date"], :root.dark input[type="text"], :root.dark input[type="number"], :root.dark .horario-select, :root.dark .pill{
+:root.dark select, :root.dark input[type="date"], :root.dark input[type="text"], :root.dark input[type="number"], :root.dark .pill{
   background:#182324; color:var(--ink); border-color:#2B3A3B;
 }
 :root.dark h1, :root.dark .card h3, :root.dark .kpi .value, :root.dark .conex-saturday td.mono,
@@ -116,11 +116,6 @@ body{
 .nav-item svg{ width:17px; height:17px; opacity:.85; flex-shrink:0; }
 .nav-item:hover{ background: rgba(255,255,255,0.06); color:#fff; }
 .nav-item.active{ background: rgba(255,255,255,0.12); color:#fff; border-color: rgba(255,255,255,0.08); }
-.nav-item .dot{
-  margin-left:auto; width:8px;height:8px;border-radius:50%; background: var(--accent-coral);
-  display:none;
-}
-.nav-item.has-alert .dot{ display:block; }
 
 .sidebar-foot{
   margin-top:auto;
@@ -154,7 +149,10 @@ body.visitor-mode .devol1-input,
 body.visitor-mode .devol2-input,
 body.visitor-mode .devol-dot,
 body.visitor-mode #colab-add-date,
-body.visitor-mode #colab-new-date{
+body.visitor-mode #colab-new-date,
+body.visitor-mode #equipo-nota-fecha,
+body.visitor-mode #equipo-nota-texto,
+body.visitor-mode #equipo-nota-add{
   pointer-events:none; opacity:.55; cursor:default;
 }
 
@@ -285,7 +283,6 @@ tbody tr:hover{ background: #FAFBFB; }
 .pill.tarea-5, .pill.tarea-6, .pill.tarea-7, .pill.tarea-8, .pill.tarea-empty{
   background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2;
 }
-.horario-select{ font-family:var(--font-mono); font-size:13px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
 .bday-select{ font-size:13px; font-weight:600; padding:4px 8px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
 .conex-vertical th{ position:sticky; top:0; background:#F2F5F5; z-index:1; }
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
@@ -475,10 +472,9 @@ select:focus, input:focus{ border-color: var(--brand); }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
         Conexión diaria
       </div>
-      <div class="nav-item has-alert" data-view="monitoreos">
+      <div class="nav-item" data-view="monitoreos">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
         Monitoreos y devoluciones
-        <span class="dot"></span>
       </div>
     </nav>
     <div class="sidebar-foot">
@@ -534,7 +530,7 @@ const APP = {
   colaborador: null,
   colabTab: 'productividad',
   bannerDismissed: { resumen:false, monitoreos:false, birthdays:false },
-  overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, devol1_check:{}, devol2_check:{}, inbox:{}, nameRenames:{}, birthdays:{} },
+  overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, devol1_check:{}, devol2_check:{}, inbox:{}, nameRenames:{}, birthdays:{}, notas_equipo:[] },
 };
 const METRIC_FIELDS = ['ATT','ACW','HOLD','TMO','Llamados','ActDatos','GDigital','Nota'];
 const METRIC_LABELS = {ATT:'ATT', ACW:'ACW', HOLD:'HOLD', TMO:'TMO', Llamados:'Llamados', ActDatos:'% Datos', GDigital:'G. Digital', Nota:'Nota'};
@@ -544,7 +540,7 @@ const LOCAL_KEY = 'torre-control-overrides';
 const SUPABASE_URL = 'https://kakjzaviulnccldccucl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_AAPMZ4poPfvsJuYuKBW7rA_o5dMn5ND';
 const OVERRIDES_ROW_ID = 'main';
-const DEFAULT_OVERRIDES = {roster:{},roster_month:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},devol1_check:{},devol2_check:{},inbox:{},nameRenames:{},birthdays:{}};
+const DEFAULT_OVERRIDES = {roster:{},roster_month:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},devol1_check:{},devol2_check:{},inbox:{},nameRenames:{},birthdays:{},notas_equipo:[]};
 const supabaseClient = (typeof window.supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
@@ -1081,6 +1077,22 @@ async function setBirthday(name, mm, dd){
   }
   await saveOverrides();
 }
+function getEquipoNotas(){
+  return (APP.overrides.notas_equipo || []).slice().sort((a,b)=> (b.fecha||'').localeCompare(a.fecha||'') || b.id-a.id);
+}
+async function addEquipoNota(fecha, texto){
+  if(!APP.isAdmin) return;
+  const t = (texto||'').trim();
+  if(!t) return;
+  if(!APP.overrides.notas_equipo) APP.overrides.notas_equipo = [];
+  APP.overrides.notas_equipo.push({ id: Date.now(), fecha: fecha || null, texto: t });
+  await saveOverrides();
+}
+async function deleteEquipoNota(id){
+  if(!APP.isAdmin) return;
+  APP.overrides.notas_equipo = (APP.overrides.notas_equipo || []).filter(n=> n.id !== id);
+  await saveOverrides();
+}
 const WEEKDAY_LABELS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 function stripTime(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 function startOfWeek(d){
@@ -1505,6 +1517,17 @@ function renderEquipo(main){
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#E7ECEC;display:inline-block;"></span>Sin dato</span>
       </div>
     </div>
+
+    <div class="card" style="margin-top:16px;">
+      <h3>Notas del equipo</h3>
+      <p class="foot-note" style="text-align:left; margin:-8px 0 14px 0;">Registrá acá avisos o eventos puntuales del equipo: demoras en el logueo, incidentes del sistema, etc.</p>
+      <div class="toolbar" style="margin-bottom:14px;">
+        <input type="date" id="equipo-nota-fecha" value="${isoDate(TODAY.getFullYear(), TODAY.getMonth()+1, TODAY.getDate())}">
+        <input type="text" id="equipo-nota-texto" placeholder="Ej: demora en el logueo por caída del sistema" style="flex:1; min-width:220px;">
+        <button class="btn primary" id="equipo-nota-add">+ Agregar nota</button>
+      </div>
+      <div id="equipo-notas-list"></div>
+    </div>
     <div class="foot-note">Los cambios se guardan automáticamente en Supabase.</div>
   `;
   document.getElementById('equipo-month-tabs').addEventListener('click', (e)=>{
@@ -1633,6 +1656,33 @@ function renderEquipo(main){
       render();
     });
   });
+
+  // notas del equipo
+  const notasList = document.getElementById('equipo-notas-list');
+  const notas = getEquipoNotas();
+  notasList.innerHTML = notas.length ? notas.map(n=>`
+    <div style="display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px dashed var(--line);">
+      <span class="mono" style="color:var(--ink-faint); flex-shrink:0; padding-top:1px;">${n.fecha ? fmtDateShort(n.fecha) : '—'}</span>
+      <span style="flex:1;">${n.texto}</span>
+      <button class="name-edit-btn" data-id="${n.id}" title="Eliminar nota" style="flex-shrink:0;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      </button>
+    </div>`).join('') : `<p class="empty" style="padding:20px 0;">Todavía no hay notas cargadas.</p>`;
+  notasList.querySelectorAll('button[data-id]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!APP.isAdmin) return;
+      await deleteEquipoNota(Number(btn.dataset.id));
+      render();
+    });
+  });
+  document.getElementById('equipo-nota-add').addEventListener('click', async ()=>{
+    if(!APP.isAdmin) return;
+    const fechaInp = document.getElementById('equipo-nota-fecha');
+    const textoInp = document.getElementById('equipo-nota-texto');
+    if(!textoInp.value.trim()) return;
+    await addEquipoNota(fechaInp.value || null, textoInp.value);
+    render();
+  });
 }
 
 function modalidadSelect(name, current, mk){
@@ -1647,7 +1697,7 @@ function modalidadSelect(name, current, mk){
 const HORARIO_OPTIONS = ['12 – 19','9 – 16','8 – 15','7 – 14','CORTADO'];
 function horarioSelect(name, current, mk){
   const list = (current && !HORARIO_OPTIONS.includes(current)) ? [...HORARIO_OPTIONS, current] : HORARIO_OPTIONS;
-  return `<select data-field="horario" data-name="${name}" data-month="${mk||''}" class="horario-select">
+  return `<select data-field="horario" data-name="${name}" data-month="${mk||''}" class="pill">
     <option value="" ${!current?'selected':''}>—</option>
     ${list.map(o=>`<option value="${o}" ${current===o?'selected':''}>${o}</option>`).join('')}
   </select>`;
