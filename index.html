@@ -996,11 +996,25 @@ async function renamePerson(currentName, newNameRaw){
   await saveOverrides();
   return true;
 }
+function businessDaysSince(start, end){
+  // Cuenta días hábiles (lunes a viernes) entre start (exclusive) y end (inclusive):
+  // sábados y domingos no se trabajan, así que no deben sumar al atraso del monitoreo.
+  let count = 0;
+  const cur = stripTime(start);
+  const last = stripTime(end);
+  cur.setDate(cur.getDate()+1);
+  while(cur <= last){
+    const dow = cur.getDay();
+    if(dow!==0 && dow!==6) count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
+}
 function getMonitoreo(name){
   const ultimo = APP.overrides.monitoreos[name] || RAW.monitoreos[name] || null;
   if(!ultimo) return {ultimo:null, dias:null, estado:'Sin dato'};
   const d = new Date(ultimo+'T00:00:00');
-  const dias = Math.floor((TODAY - d) / 86400000);
+  const dias = businessDaysSince(d, TODAY);
   let estado = 'Ok';
   if(dias > 21) estado = 'Muy atrasado';
   else if(dias > 14) estado = 'Atrasado';
