@@ -1220,7 +1220,7 @@ function inboxDots(name, check){
       let bg = '#E7ECEC', title='Sin dato';
       if(v==='si'){ bg='#3FAE96'; title='Realizada'; }
       else if(v==='no'){ bg='#D65B45'; title='No realizada'; }
-      else if(v==='home'){ bg='#3A6EA5'; title='Home Office'; }
+      else if(v==='home'){ bg='#8B5CF6'; title='Home Office'; }
       return `<div class="inbox-dot" data-name="${name}" data-month="${mk}" title="${MONTH_LABELS[mk]}: ${title}" style="background:${bg};"></div>`;
     }).join('')}
   </div>`;
@@ -2242,7 +2242,7 @@ function renderMonitoreos(main){
         <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--ink-soft);">
           <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3FAE96;display:inline-block;"></span>Realizada</span>
           <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#D65B45;display:inline-block;"></span>No realizada</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3A6EA5;display:inline-block;"></span>Home Office</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#8B5CF6;display:inline-block;"></span>Home Office</span>
           <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#E7ECEC;display:inline-block;"></span>Sin dato</span>
         </div>
       </div>
