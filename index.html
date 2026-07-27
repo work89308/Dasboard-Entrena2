@@ -2232,10 +2232,10 @@ function renderMonitoreos(main){
         </div>
       </div>
       <div class="card">
-        <h3>Inbox <span class="sub">Escucha en vivo · clic en un mes para marcarlo · Modalidad, horario y tarea de ${MONTH_LABELS[CURRENT_MONTH_KEY]}</span></h3>
+        <h3>Inbox <span class="sub">Escucha en vivo · clic en un mes para marcarlo · Horario, modalidad y tarea de ${MONTH_LABELS[CURRENT_MONTH_KEY]}</span></h3>
         <div class="scroll-x">
         <table>
-          <thead><tr><th style="width:160px;">Nombre</th><th>Estado por mes</th><th>Modalidad</th><th>Horario</th><th>Tarea</th></tr></thead>
+          <thead><tr><th style="width:160px;">Nombre</th><th>Estado por mes</th><th>Horario</th><th>Modalidad</th><th>Tarea</th></tr></thead>
           <tbody id="inbox-tbody"></tbody>
         </table>
         </div>
@@ -2298,8 +2298,8 @@ function renderMonitoreos(main){
     tr.innerHTML = `
       <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name,24)} ${name}</div></td>
       <td>${inboxDots(name, check)}</td>
-      <td><span class="pill ${modalidadClass(rm.modalidad)}">${rm.modalidad||'—'}</span></td>
       <td><span class="pill">${rm.horario||'—'}</span></td>
+      <td><span class="pill ${modalidadClass(rm.modalidad)}">${rm.modalidad||'—'}</span></td>
       <td><span class="pill ${tareaClass(rm.tarea)}">${rm.tarea||'—'}</span></td>
     `;
     inboxTbody.appendChild(tr);
