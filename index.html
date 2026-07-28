@@ -582,6 +582,18 @@ async function loadOverrides(){
 
 function deepMergePreferLocal(remote, local){
   if(local===undefined) return remote;
+  if(Array.isArray(local) || Array.isArray(remote)){
+    // Listas como notas_equipo: se combinan por id en vez de que la local pise
+    // entera a la remota, para no perder una nota agregada desde otra sesión
+    // justo entre el fetch y el guardado de esta.
+    if(Array.isArray(local) && Array.isArray(remote) && local.every(x=>x && x.id!=null) && remote.every(x=>x && x.id!=null)){
+      const byId = new Map();
+      remote.forEach(item=> byId.set(item.id, item));
+      local.forEach(item=> byId.set(item.id, item));
+      return Array.from(byId.values());
+    }
+    return local;
+  }
   const isPlainObj = v => v!==null && typeof v==='object' && !Array.isArray(v);
   if(!isPlainObj(local) || !isPlainObj(remote)) return local;
   const out = Object.assign({}, remote);
@@ -953,6 +965,12 @@ function rekeyProp(obj, oldKey, newKey){
     delete obj[oldKey];
   }
 }
+// Los valores editables (nombre, notas, entrada/salida, etc.) se renderizan
+// vía innerHTML en toda la app, así que se escapan al guardarlos para que un
+// admin no pueda inyectar HTML/JS sin querer al tipear algo con < > & " '.
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 function migrateName(oldName, newName){
   if(!oldName || !newName || oldName===newName) return;
   const rItem = RAW.roster.find(r=>r.name===oldName);
@@ -986,7 +1004,7 @@ function applyStoredRenames(){
 }
 async function renamePerson(currentName, newNameRaw){
   if(!APP.isAdmin) return false;
-  const newName = (newNameRaw || '').trim();
+  const newName = escapeHtml((newNameRaw || '').trim());
   if(!newName || newName===currentName) return false;
   if(NAMES.includes(newName)){ alert('Ya existe una persona con ese nombre.'); return false; }
   if(!APP.overrides.nameRenames) APP.overrides.nameRenames = {};
@@ -1034,7 +1052,7 @@ async function setMetric(name, mk, field, value){
   if(!APP.isAdmin) return;
   if(!APP.overrides.metrics[mk]) APP.overrides.metrics[mk] = {};
   if(!APP.overrides.metrics[mk][name]) APP.overrides.metrics[mk][name] = {};
-  APP.overrides.metrics[mk][name][field] = value;
+  APP.overrides.metrics[mk][name][field] = (field==='Nota' && typeof value==='string') ? escapeHtml(value) : value;
   await saveOverrides();
 }
 function getConexEntry(date, name){
@@ -1046,7 +1064,7 @@ async function setConexEntry(date, name, field, value){
   if(!APP.isAdmin) return;
   if(!APP.overrides.conex[date]) APP.overrides.conex[date] = {};
   if(!APP.overrides.conex[date][name]) APP.overrides.conex[date][name] = {};
-  APP.overrides.conex[date][name][field] = value;
+  APP.overrides.conex[date][name][field] = value==null ? null : escapeHtml(value);
   await saveOverrides();
 }
 async function addConexDate(date){
@@ -1096,7 +1114,7 @@ function getEquipoNotas(){
 }
 async function addEquipoNota(fecha, texto){
   if(!APP.isAdmin) return;
-  const t = (texto||'').trim();
+  const t = escapeHtml((texto||'').trim());
   if(!t) return;
   if(!APP.overrides.notas_equipo) APP.overrides.notas_equipo = [];
   APP.overrides.notas_equipo.push({ id: Date.now(), fecha: fecha || null, texto: t });
@@ -1178,7 +1196,7 @@ function getDevol2(name){
 async function setDevol2(name, field, value){
   if(!APP.isAdmin) return;
   const cur = getDevol2(name);
-  cur[field] = value;
+  cur[field] = (field==='confeccion' && typeof value==='string') ? escapeHtml(value) : value;
   APP.overrides.devol2[name] = cur;
   await saveOverrides();
 }
