@@ -26,6 +26,14 @@
   --accent-coral: #D65B45;
   --accent-coral-soft: #FBE7E2;
   --accent-blue: #3A6EA5;
+  /* Colores de estado (puntos/leyendas de Realizada, Home Office, etc.), separados
+     de los --accent-* de arriba aunque hoy compartan valor, para poder tocar un
+     estado sin buscar todos los lugares donde está hardcodeado el mismo hex. */
+  --status-done: #3FAE96;
+  --status-bad: #D65B45;
+  --status-pending: #E4A121;
+  --status-home: #8B5CF6;
+  --status-none: #E7ECEC;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(16,38,42,0.04), 0 6px 20px rgba(16,38,42,0.06);
   --font-display: 'Space Grotesk', sans-serif;
@@ -1217,10 +1225,16 @@ async function setDevol2Check(name, value){
   await saveOverrides();
 }
 function devolCheckDot(name, field, value){
-  let bg='#E7ECEC', title='Sin dato';
-  if(value==='si'){ bg='#3FAE96'; title='Realizada'; }
-  else if(value==='no'){ bg='#D65B45'; title='No realizada'; }
+  let bg='var(--status-none)', title='Sin dato';
+  if(value==='si'){ bg='var(--status-done)'; title='Realizada'; }
+  else if(value==='no'){ bg='var(--status-bad)'; title='No realizada'; }
   return `<div class="devol-dot" data-name="${name}" data-field="${field}" title="${title}" style="width:11px;height:11px;border-radius:3px;background:${bg};"></div>`;
+}
+// Leyenda de colores reusable: items es [[color, etiqueta], ...]
+function statusLegend(items, gap){
+  return `<div style="margin-top:10px; display:flex; gap:${gap||10}px; flex-wrap:wrap; font-size:11px; color:var(--ink-soft);">
+    ${items.map(([color,label])=> `<span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:${color};display:inline-block;"></span>${label}</span>`).join('')}
+  </div>`;
 }
 function getInboxCheck(name){
   return APP.overrides.inbox[name] || {};
@@ -1235,10 +1249,10 @@ function inboxDots(name, check){
   return `<div style="display:flex; gap:4px;">
     ${MONTH_KEYS.slice(0,12).map(mk=>{
       const v = check[mk];
-      let bg = '#E7ECEC', title='Sin dato';
-      if(v==='si'){ bg='#3FAE96'; title='Realizada'; }
-      else if(v==='no'){ bg='#D65B45'; title='No realizada'; }
-      else if(v==='home'){ bg='#8B5CF6'; title='Home Office'; }
+      let bg = 'var(--status-none)', title='Sin dato';
+      if(v==='si'){ bg='var(--status-done)'; title='Realizada'; }
+      else if(v==='no'){ bg='var(--status-bad)'; title='No realizada'; }
+      else if(v==='home'){ bg='var(--status-home)'; title='Home Office'; }
       return `<div class="inbox-dot" data-name="${name}" data-month="${mk}" title="${MONTH_LABELS[mk]}: ${title}" style="background:${bg};"></div>`;
     }).join('')}
   </div>`;
@@ -1481,9 +1495,9 @@ function renderResumen(main){
 
   // ---- charts (best-effort; never block the rest of the page) ----
   document.getElementById('chart-donut').innerHTML = donutSvg([
-    {label:'Al día', val: monitoreoRows.filter(r=>r.dias!=null && r.dias<=14).length, color:'#3FAE96'},
-    {label:'Atrasado', val: monitoreoRows.filter(r=>r.dias!=null && r.dias>14 && r.dias<=21).length, color:'#E4A121'},
-    {label:'Muy atrasado', val: monitoreoRows.filter(r=>r.dias!=null && r.dias>21).length, color:'#D65B45'},
+    {label:'Al día', val: monitoreoRows.filter(r=>r.dias!=null && r.dias<=14).length, color:'var(--status-done)'},
+    {label:'Atrasado', val: monitoreoRows.filter(r=>r.dias!=null && r.dias>14 && r.dias<=21).length, color:'var(--status-pending)'},
+    {label:'Muy atrasado', val: monitoreoRows.filter(r=>r.dias!=null && r.dias>21).length, color:'var(--status-bad)'},
   ]);
 
   const rankSorted = NAMES.map(n=>({name:n, v: (metrics[n] && typeof metrics[n].GDigital==='number') ? metrics[n].GDigital : 0}))
@@ -1543,11 +1557,7 @@ function renderEquipo(main){
         <tbody id="equipo-tbody"></tbody>
       </table>
       </div>
-      <div style="margin-top:10px; display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--ink-soft);">
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3FAE96;display:inline-block;"></span>Dev1/Dev2 realizada</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#D65B45;display:inline-block;"></span>No realizada</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#E7ECEC;display:inline-block;"></span>Sin dato</span>
-      </div>
+      ${statusLegend([['var(--status-done)','Dev1/Dev2 realizada'],['var(--status-bad)','No realizada'],['var(--status-none)','Sin dato']], 14)}
     </div>
 
     <div class="card" style="margin-top:16px;">
@@ -1768,9 +1778,9 @@ function prodDots(name, check){
   return `<div style="display:flex; gap:4px;">
     ${MONTH_KEYS.slice(0,12).map(mk=>{
       const v = check[mk];
-      let bg = '#E7ECEC', title='Sin dato';
-      if(v==='ok'){ bg='#3FAE96'; title='OK'; }
-      else if(v==='pendiente'){ bg='#E4A121'; title='Pendiente'; }
+      let bg = 'var(--status-none)', title='Sin dato';
+      if(v==='ok'){ bg='var(--status-done)'; title='OK'; }
+      else if(v==='pendiente'){ bg='var(--status-pending)'; title='Pendiente'; }
       return `<div class="dot-cell" data-name="${name}" data-month="${mk}" title="${MONTH_LABELS[mk]}: ${title}" style="width:11px;height:11px;border-radius:3px;background:${bg};cursor:pointer;"></div>`;
     }).join('')}
   </div>`;
@@ -2257,12 +2267,7 @@ function renderMonitoreos(main){
           <tbody id="inbox-tbody"></tbody>
         </table>
         </div>
-        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--ink-soft);">
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#3FAE96;display:inline-block;"></span>Realizada</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#D65B45;display:inline-block;"></span>No realizada</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#8B5CF6;display:inline-block;"></span>Home Office</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#E7ECEC;display:inline-block;"></span>Sin dato</span>
-        </div>
+        ${statusLegend([['var(--status-done)','Realizada'],['var(--status-bad)','No realizada'],['var(--status-home)','Home Office'],['var(--status-none)','Sin dato']])}
       </div>
     </div>
 
