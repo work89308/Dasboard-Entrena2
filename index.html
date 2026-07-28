@@ -34,6 +34,7 @@
   --status-pending: #E4A121;
   --status-home: #8B5CF6;
   --status-none: #E7ECEC;
+  --status-none-border: #C7D2D1;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(16,38,42,0.04), 0 6px 20px rgba(16,38,42,0.06);
   --font-display: 'Space Grotesk', sans-serif;
@@ -264,8 +265,16 @@ td{ padding: 10px 10px; border-bottom:1px solid #EEF2F2; vertical-align:middle; 
 tr:last-child td{ border-bottom:none; }
 tbody tr:hover{ background: #FAFBFB; }
 .name-cell{ display:flex; align-items:center; gap:9px; }
+.name-cell[data-open]{ cursor:pointer; }
 .name-edit-btn{ border:none; background:none; cursor:pointer; color:var(--ink-faint); padding:2px 4px; margin-left:auto; flex-shrink:0; display:flex; align-items:center; }
 .name-edit-btn:hover{ color:var(--brand); }
+.name-edit-input{ width:150px; }
+.name-edit-ok, .name-edit-cancel{
+  border:none; cursor:pointer; width:24px; height:24px; border-radius:7px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:12px;
+}
+.name-edit-ok{ background:var(--status-done); color:#fff; }
+.name-edit-cancel{ background:var(--brand-soft); color:var(--ink-soft); }
 .avatar{
   width:28px;height:28px;border-radius:50%; flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
@@ -1022,6 +1031,26 @@ async function renamePerson(currentName, newNameRaw){
   await saveOverrides();
   return true;
 }
+// Reemplaza el pencil-click de un name-cell por un input en línea (en vez del
+// prompt() nativo del navegador, que rompe con el resto del diseño).
+function startNameEdit(cellEl, name){
+  if(!cellEl) return;
+  cellEl.innerHTML = `
+    <input type="text" class="name-edit-input" value="${name}">
+    <button class="name-edit-ok" title="Guardar">✓</button>
+    <button class="name-edit-cancel" title="Cancelar">✕</button>
+  `;
+  const input = cellEl.querySelector('input');
+  input.focus();
+  input.select();
+  const confirm = async ()=>{ await renamePerson(name, input.value); render(); };
+  cellEl.querySelector('.name-edit-ok').addEventListener('click', confirm);
+  cellEl.querySelector('.name-edit-cancel').addEventListener('click', ()=> render());
+  input.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter') confirm();
+    else if(e.key==='Escape') render();
+  });
+}
 function businessDaysSince(start, end){
   // Cuenta días hábiles (lunes a viernes) entre start (exclusive) y end (inclusive):
   // sábados y domingos no se trabajan, así que no deben sumar al atraso del monitoreo.
@@ -1225,10 +1254,10 @@ async function setDevol2Check(name, value){
   await saveOverrides();
 }
 function devolCheckDot(name, field, value){
-  let bg='var(--status-none)', title='Sin dato';
-  if(value==='si'){ bg='var(--status-done)'; title='Realizada'; }
-  else if(value==='no'){ bg='var(--status-bad)'; title='No realizada'; }
-  return `<div class="devol-dot" data-name="${name}" data-field="${field}" title="${title}" style="width:11px;height:11px;border-radius:3px;background:${bg};"></div>`;
+  let bg='var(--status-none)', border='1px solid var(--status-none-border)', title='Sin dato';
+  if(value==='si'){ bg='var(--status-done)'; border='none'; title='Realizada'; }
+  else if(value==='no'){ bg='var(--status-bad)'; border='none'; title='No realizada'; }
+  return `<div class="devol-dot" data-name="${name}" data-field="${field}" title="${title}" style="width:11px;height:11px;border-radius:3px;background:${bg};border:${border};"></div>`;
 }
 // Leyenda de colores reusable: items es [[color, etiqueta], ...]
 function statusLegend(items, gap){
@@ -1249,11 +1278,11 @@ function inboxDots(name, check){
   return `<div style="display:flex; gap:4px;">
     ${MONTH_KEYS.slice(0,12).map(mk=>{
       const v = check[mk];
-      let bg = 'var(--status-none)', title='Sin dato';
-      if(v==='si'){ bg='var(--status-done)'; title='Realizada'; }
-      else if(v==='no'){ bg='var(--status-bad)'; title='No realizada'; }
-      else if(v==='home'){ bg='var(--status-home)'; title='Home Office'; }
-      return `<div class="inbox-dot" data-name="${name}" data-month="${mk}" title="${MONTH_LABELS[mk]}: ${title}" style="background:${bg};"></div>`;
+      let bg = 'var(--status-none)', border='1px solid var(--status-none-border)', title='Sin dato';
+      if(v==='si'){ bg='var(--status-done)'; border='none'; title='Realizada'; }
+      else if(v==='no'){ bg='var(--status-bad)'; border='none'; title='No realizada'; }
+      else if(v==='home'){ bg='var(--status-home)'; border='none'; title='Home Office'; }
+      return `<div class="inbox-dot" data-name="${name}" data-month="${mk}" title="${MONTH_LABELS[mk]}: ${title}" style="background:${bg};border:${border};"></div>`;
     }).join('')}
   </div>`;
 }
@@ -1455,7 +1484,7 @@ function renderResumen(main){
     const m = getMonitoreo(name);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name)} <span>${name}</span></div></td>
+      <td><div class="name-cell" data-open="${name}">${avatar(name)} <span>${name}</span></div></td>
       <td><span class="pill">${rm.horario||'—'}</span></td>
       <td><span class="pill ${modalidadClass(rm.modalidad)}">${rm.modalidad||'—'}</span></td>
       <td><span class="pill ${tareaClass(rm.tarea)}">${rm.tarea||'—'}</span></td>
@@ -1589,7 +1618,7 @@ function renderEquipo(main){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
-        <div class="name-cell">
+        <div class="name-cell" data-name-cell="${name}">
           <span style="cursor:pointer; display:flex; align-items:center; gap:9px;" data-open="${name}">${avatar(name)} <span>${name}</span></span>
           <button class="name-edit-btn" data-name="${name}" title="Renombrar">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -1611,14 +1640,10 @@ function renderEquipo(main){
     el.addEventListener('click', ()=> goToColaborador(el.dataset.open));
   });
   tbody.querySelectorAll('.name-edit-btn').forEach(btn=>{
-    btn.addEventListener('click', async (e)=>{
+    btn.addEventListener('click', (e)=>{
       e.stopPropagation();
       if(!APP.isAdmin) return;
-      const name = btn.dataset.name;
-      const nuevo = prompt('Nuevo nombre para "'+name+'":', name);
-      if(nuevo==null) return;
-      const ok = await renamePerson(name, nuevo);
-      if(ok) render();
+      startNameEdit(btn.closest('.name-cell'), btn.dataset.name);
     });
   });
 
@@ -1778,10 +1803,10 @@ function prodDots(name, check){
   return `<div style="display:flex; gap:4px;">
     ${MONTH_KEYS.slice(0,12).map(mk=>{
       const v = check[mk];
-      let bg = 'var(--status-none)', title='Sin dato';
-      if(v==='ok'){ bg='var(--status-done)'; title='OK'; }
-      else if(v==='pendiente'){ bg='var(--status-pending)'; title='Pendiente'; }
-      return `<div class="dot-cell" data-name="${name}" data-month="${mk}" title="${MONTH_LABELS[mk]}: ${title}" style="width:11px;height:11px;border-radius:3px;background:${bg};cursor:pointer;"></div>`;
+      let bg = 'var(--status-none)', border='1px solid var(--status-none-border)', title='Sin dato';
+      if(v==='ok'){ bg='var(--status-done)'; border='none'; title='OK'; }
+      else if(v==='pendiente'){ bg='var(--status-pending)'; border='none'; title='Pendiente'; }
+      return `<div class="dot-cell" data-name="${name}" data-month="${mk}" title="${MONTH_LABELS[mk]}: ${title}" style="width:11px;height:11px;border-radius:3px;background:${bg};border:${border};cursor:pointer;"></div>`;
     }).join('')}
   </div>`;
 }
@@ -2197,7 +2222,7 @@ function renderProductividad(main){
     const v = getMetric(name, mk);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name,24)} ${name}</div></td>
+      <td><div class="name-cell" data-open="${name}">${avatar(name,24)} ${name}</div></td>
       <td>${metricInputCell(name,mk,'ATT',v.ATT)}</td>
       <td>${metricInputCell(name,mk,'ACW',v.ACW)}</td>
       <td>${metricInputCell(name,mk,'HOLD',v.HOLD)}</td>
@@ -2297,7 +2322,7 @@ function renderMonitoreos(main){
   rows.forEach(r=>{
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><div class="name-cell" style="cursor:pointer;" data-open="${r.name}">${avatar(r.name)} ${r.name}</div></td>
+      <td><div class="name-cell" data-open="${r.name}">${avatar(r.name)} ${r.name}</div></td>
       <td>${monitoreoBadge(r)}</td>
       <td><input type="date" data-name="${r.name}" value="${r.ultimo||''}"></td>
     `;
@@ -2319,7 +2344,7 @@ function renderMonitoreos(main){
     const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name,24)} ${name}</div></td>
+      <td><div class="name-cell" data-open="${name}">${avatar(name,24)} ${name}</div></td>
       <td>${inboxDots(name, check)}</td>
       <td><span class="pill">${rm.horario||'—'}</span></td>
       <td><span class="pill ${modalidadClass(rm.modalidad)}">${rm.modalidad||'—'}</span></td>
@@ -2347,7 +2372,7 @@ function renderMonitoreos(main){
     const d1 = getDevol1(name);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name,24)} ${name}</div></td>
+      <td><div class="name-cell" data-open="${name}">${avatar(name,24)} ${name}</div></td>
       <td><input type="date" class="devol1-input" data-name="${name}" value="${d1||''}"></td>
     `;
     d1tbody.appendChild(tr);
@@ -2362,7 +2387,7 @@ function renderMonitoreos(main){
     const d2 = getDevol2(name);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><div class="name-cell" style="cursor:pointer;" data-open="${name}">${avatar(name,24)} ${name}</div></td>
+      <td><div class="name-cell" data-open="${name}">${avatar(name,24)} ${name}</div></td>
       <td><input type="date" class="devol2-input" data-name="${name}" data-field="fecha" value="${d2.fecha||''}"></td>
     `;
     d2tbody.appendChild(tr);
