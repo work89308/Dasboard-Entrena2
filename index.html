@@ -266,7 +266,10 @@ tr:last-child td{ border-bottom:none; }
 tbody tr:hover{ background: #FAFBFB; }
 .name-cell{ display:flex; align-items:center; gap:9px; }
 .name-cell[data-open]{ cursor:pointer; }
-.name-edit-btn{ border:none; background:none; cursor:pointer; color:var(--ink-faint); padding:2px 4px; margin-left:auto; flex-shrink:0; display:flex; align-items:center; }
+.name-cell-actions{ display:flex; align-items:center; gap:2px; margin-left:auto; flex-shrink:0; }
+.icon-btn{ border:none; background:none; cursor:pointer; color:var(--ink-faint); padding:4px; border-radius:6px; display:flex; align-items:center; }
+.icon-btn:hover{ color:var(--brand); background:var(--brand-soft); }
+.name-edit-btn{ border:none; background:none; cursor:pointer; color:var(--ink-faint); padding:2px 4px; flex-shrink:0; display:flex; align-items:center; }
 .name-edit-btn:hover{ color:var(--brand); }
 .name-edit-input{ width:150px; }
 .name-edit-ok, .name-edit-cancel{
@@ -478,10 +481,6 @@ select:focus, input:focus{ border-color: var(--brand); }
       <div class="nav-item" data-view="equipo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 21c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17.5" cy="8.5" r="2.5"/><path d="M15.5 12.2c2.6.2 4.7 2.3 5 5.3"/></svg>
         Equipo
-      </div>
-      <div class="nav-item" data-view="colaborador">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
-        Ficha de colaborador
       </div>
       <div class="nav-item" data-view="productividad">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V10M11 19V5M18 19v-7"/><path d="M2 19h20"/></svg>
@@ -1622,9 +1621,12 @@ function renderEquipo(main){
       <td>
         <div class="name-cell" data-name-cell="${name}">
           <span style="cursor:pointer; display:flex; align-items:center; gap:9px;" data-open="${name}">${avatar(name)} <span>${name}</span></span>
-          <button class="name-edit-btn" data-name="${name}" title="Renombrar">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-          </button>
+          <div class="name-cell-actions">
+            ${exportPdfBtnHtml(name)}
+            <button class="name-edit-btn" data-name="${name}" title="Renombrar">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+          </div>
         </div>
       </td>
       <td>${horarioSelect(name, rm.horario, mk)}</td>
@@ -1648,6 +1650,7 @@ function renderEquipo(main){
       startNameEdit(btn.closest('.name-cell'), btn.dataset.name);
     });
   });
+  wireExportPdfButtons(tbody);
 
   // cumpleaños (día y mes elegidos de una lista, sin año)
   tbody.querySelectorAll('.bday-select').forEach(sel=>{
@@ -2079,6 +2082,19 @@ function renderColabDevoluciones(body, name){
 }
 
 /* ================= EXPORTAR PDF ================= */
+function exportPdfBtnHtml(name){
+  return `<button class="icon-btn export-pdf-btn" data-export="${name}" title="Exportar PDF de ${name}">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+  </button>`;
+}
+function wireExportPdfButtons(root){
+  root.querySelectorAll('.export-pdf-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openExportModal(btn.dataset.export);
+    });
+  });
+}
 function openExportModal(name){
   const existing = document.getElementById('export-modal-overlay');
   if(existing) existing.remove();
@@ -2224,7 +2240,12 @@ function renderProductividad(main){
     const v = getMetric(name, mk);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><div class="name-cell" data-open="${name}">${avatar(name,24)} ${name}</div></td>
+      <td>
+        <div class="name-cell">
+          <span style="cursor:pointer; display:flex; align-items:center; gap:9px;" data-open="${name}">${avatar(name,24)} ${name}</span>
+          <div class="name-cell-actions">${exportPdfBtnHtml(name)}</div>
+        </div>
+      </td>
       <td>${metricInputCell(name,mk,'ATT',v.ATT)}</td>
       <td>${metricInputCell(name,mk,'ACW',v.ACW)}</td>
       <td>${metricInputCell(name,mk,'HOLD',v.HOLD)}</td>
@@ -2237,6 +2258,7 @@ function renderProductividad(main){
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  wireExportPdfButtons(tbody);
   tbody.querySelectorAll('.metric-input').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
       if(!APP.isAdmin) return;
