@@ -301,7 +301,9 @@ tbody tr:hover{ background: #FAFBFB; }
   background: var(--brand-soft); color: var(--brand); border-color:#CFE7E2;
 }
 .bday-select{ font-size:13px; font-weight:600; padding:4px 8px; border-radius:20px; border:1px solid #CFE7E2; background:var(--brand-soft); color:var(--brand); }
-.conex-vertical th{ position:sticky; top:0; background:#F2F5F5; z-index:1; }
+.conex-scroll{ max-height:65vh; overflow-y:auto; }
+.conex-vertical thead th{ position:sticky; background:#F2F5F5; z-index:2; }
+.conex-vertical thead tr:first-child th{ top:0; z-index:3; }
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
 .conex-vertical input{ text-align:center; padding:5px 4px; }
 .conex-input.conex-ok{ background: var(--brand-soft); border-color:#CFE7E2; }
@@ -2447,7 +2449,7 @@ function renderConexion(main){
 
     <div class="card">
       <h3>Planilla de conexión <span class="sub">${MONTH_LABELS[mk]} ${YEAR}</span></h3>
-      <div class="scroll-x">
+      <div class="scroll-x conex-scroll">
       <table class="conex-vertical">
         <thead>
           <tr>
@@ -2472,6 +2474,12 @@ function renderConexion(main){
     render();
   });
   main.querySelectorAll('th[data-open]').forEach(th=> th.addEventListener('click', ()=> goToColaborador(th.dataset.open)));
+
+  const theadRows = main.querySelectorAll('.conex-vertical thead tr');
+  if(theadRows.length===2){
+    const rowHeight = theadRows[0].getBoundingClientRect().height;
+    theadRows[1].querySelectorAll('th').forEach(th=> th.style.top = rowHeight+'px');
+  }
 
   const tbody = document.getElementById('conex-tbody');
   days.forEach(date=>{
