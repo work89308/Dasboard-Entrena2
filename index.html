@@ -267,8 +267,6 @@ tbody tr:hover{ background: #FAFBFB; }
 .name-cell{ display:flex; align-items:center; gap:9px; }
 .name-cell[data-open]{ cursor:pointer; }
 .name-cell-actions{ display:flex; align-items:center; gap:2px; margin-left:auto; flex-shrink:0; }
-.icon-btn{ border:none; background:none; cursor:pointer; color:var(--ink-faint); padding:4px; border-radius:6px; display:flex; align-items:center; }
-.icon-btn:hover{ color:var(--brand); background:var(--brand-soft); }
 .name-edit-btn{ border:none; background:none; cursor:pointer; color:var(--ink-faint); padding:2px 4px; flex-shrink:0; display:flex; align-items:center; }
 .name-edit-btn:hover{ color:var(--brand); }
 .name-edit-input{ width:150px; }
@@ -1568,12 +1566,13 @@ function renderEquipo(main){
 
     ${birthdayBannerHtml()}
 
-    <div class="card" style="margin-bottom:16px;">
+    <div class="card" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
       <div class="scroll-x">
         <div class="seg" id="equipo-month-tabs" style="width:max-content;">
           ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}">${MONTH_LABELS[m].slice(0,3)}</button>`).join('')}
         </div>
       </div>
+      ${exportPickerHtml('equipo-export-select', 'equipo-export-pdf')}
     </div>
     <div class="card">
       <div class="scroll-x">
@@ -1608,6 +1607,7 @@ function renderEquipo(main){
     APP.equipoMonth = btn.dataset.month;
     render();
   });
+  wireExportPicker('equipo-export-select', 'equipo-export-pdf');
   const tbody = document.getElementById('equipo-tbody');
   NAMES.forEach(name=>{
     const rm = getRosterMonth(name, mk);
@@ -1622,7 +1622,6 @@ function renderEquipo(main){
         <div class="name-cell" data-name-cell="${name}">
           <span style="cursor:pointer; display:flex; align-items:center; gap:9px;" data-open="${name}">${avatar(name)} <span>${name}</span></span>
           <div class="name-cell-actions">
-            ${exportPdfBtnHtml(name)}
             <button class="name-edit-btn" data-name="${name}" title="Renombrar">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
             </button>
@@ -1650,7 +1649,6 @@ function renderEquipo(main){
       startNameEdit(btn.closest('.name-cell'), btn.dataset.name);
     });
   });
-  wireExportPdfButtons(tbody);
 
   // cumpleaños (día y mes elegidos de una lista, sin año)
   tbody.querySelectorAll('.bday-select').forEach(sel=>{
@@ -2082,18 +2080,20 @@ function renderColabDevoluciones(body, name){
 }
 
 /* ================= EXPORTAR PDF ================= */
-function exportPdfBtnHtml(name){
-  return `<button class="icon-btn export-pdf-btn" data-export="${name}" title="Exportar PDF de ${name}">
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-  </button>`;
+function exportPickerHtml(selectId, btnId){
+  return `<div class="topbar-right">
+    <select id="${selectId}"></select>
+    <button class="btn primary" id="${btnId}">🖨️ Exportar PDF</button>
+  </div>`;
 }
-function wireExportPdfButtons(root){
-  root.querySelectorAll('.export-pdf-btn').forEach(btn=>{
-    btn.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      openExportModal(btn.dataset.export);
-    });
+function wireExportPicker(selectId, btnId){
+  const sel = document.getElementById(selectId);
+  NAMES.forEach(n=>{
+    const opt = document.createElement('option');
+    opt.value = n; opt.textContent = n;
+    sel.appendChild(opt);
   });
+  document.getElementById(btnId).addEventListener('click', ()=> openExportModal(sel.value));
 }
 function openExportModal(name){
   const existing = document.getElementById('export-modal-overlay');
@@ -2206,12 +2206,13 @@ function renderProductividad(main){
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:16px;">
+    <div class="card" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
       <div class="scroll-x">
         <div class="seg" id="prod-month-tabs" style="width:max-content;">
           ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}">${MONTH_LABELS[m].slice(0,3)}</button>`).join('')}
         </div>
       </div>
+      ${exportPickerHtml('prod-export-select', 'prod-export-pdf')}
     </div>
 
     <div class="card">
@@ -2234,18 +2235,14 @@ function renderProductividad(main){
     APP.prodMonth = btn.dataset.month;
     render();
   });
+  wireExportPicker('prod-export-select', 'prod-export-pdf');
 
   const tbody = document.getElementById('prod-tbody');
   NAMES.forEach(name=>{
     const v = getMetric(name, mk);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>
-        <div class="name-cell">
-          <span style="cursor:pointer; display:flex; align-items:center; gap:9px;" data-open="${name}">${avatar(name,24)} ${name}</span>
-          <div class="name-cell-actions">${exportPdfBtnHtml(name)}</div>
-        </div>
-      </td>
+      <td><div class="name-cell" data-open="${name}">${avatar(name,24)} ${name}</div></td>
       <td>${metricInputCell(name,mk,'ATT',v.ATT)}</td>
       <td>${metricInputCell(name,mk,'ACW',v.ACW)}</td>
       <td>${metricInputCell(name,mk,'HOLD',v.HOLD)}</td>
@@ -2258,7 +2255,6 @@ function renderProductividad(main){
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
-  wireExportPdfButtons(tbody);
   tbody.querySelectorAll('.metric-input').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
       if(!APP.isAdmin) return;
