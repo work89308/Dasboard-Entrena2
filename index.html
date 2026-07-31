@@ -1065,7 +1065,10 @@ function businessDaysSince(start, end){
   return count;
 }
 function getMonitoreo(name){
-  const ultimo = APP.overrides.monitoreos[name] || RAW.monitoreos[name] || null;
+  // Si ya se editó el dato (aunque sea para vaciarlo) no hay que volver a
+  // heredar la fecha vieja de la importación: por eso se distingue "nunca
+  // tocado" (undefined) de "guardado como vacío" (null), igual que getDevol1.
+  const ultimo = (APP.overrides.monitoreos[name]!==undefined) ? APP.overrides.monitoreos[name] : (RAW.monitoreos[name] || null);
   if(!ultimo) return {ultimo:null, dias:null, estado:'Sin dato'};
   const d = new Date(ultimo+'T00:00:00');
   const dias = businessDaysSince(d, TODAY);
@@ -1255,7 +1258,6 @@ async function setDevol2Check(name, value){
 function devolCheckDot(name, field, value){
   let bg='var(--status-none)', border='1px solid var(--status-none-border)', title='Sin dato';
   if(value==='si'){ bg='var(--status-done)'; border='none'; title='Realizada'; }
-  else if(value==='no'){ bg='var(--status-bad)'; border='none'; title='No realizada'; }
   return `<div class="devol-dot" data-name="${name}" data-field="${field}" title="${title}" style="width:11px;height:11px;border-radius:3px;background:${bg};border:${border};"></div>`;
 }
 // Leyenda de colores reusable: items es [[color, etiqueta], ...]
@@ -1299,7 +1301,13 @@ function latestMonthWithData(){
   return 'ene';
 }
 function conexDatesSorted(){
-  return Object.keys(RAW.conex).sort();
+  // La planilla de Conexión diaria deja cargar cualquier día del calendario,
+  // no solo los que ya venían en la importación original (RAW.conex): sin
+  // esto, los días cargados después quedaban guardados pero invisibles en el
+  // historial de Ficha de colaborador y en el PDF exportado.
+  const keys = new Set(Object.keys(RAW.conex));
+  Object.keys(APP.overrides.conex || {}).forEach(d=> keys.add(d));
+  return Array.from(keys).sort();
 }
 /* ---------------- gráficos propios (SVG/CSS puro, no dependen de internet) ---------------- */
 function rankBarsHtml(rows, unit){
@@ -1586,7 +1594,7 @@ function renderEquipo(main){
         <tbody id="equipo-tbody"></tbody>
       </table>
       </div>
-      ${statusLegend([['var(--status-done)','Dev1/Dev2 realizada'],['var(--status-bad)','No realizada'],['var(--status-none)','Sin dato']], 14)}
+      ${statusLegend([['var(--status-done)','Dev1/Dev2 realizada'],['var(--status-none)','Sin dato']], 14)}
     </div>
 
     <div class="card" style="margin-top:16px;">
@@ -1713,7 +1721,7 @@ function renderEquipo(main){
     });
   });
 
-  // devolución 1 y 2: cuadradito a marcar (realizada / no realizada / sin dato)
+  // devolución 1 y 2: cuadradito a marcar (realizada / sin dato)
   tbody.querySelectorAll('.devol-dot').forEach(dot=>{
     dot.addEventListener('click', async ()=>{
       if(!APP.isAdmin) return;
@@ -1721,7 +1729,7 @@ function renderEquipo(main){
       const getter = field==='1' ? getDevol1Check : getDevol2Check;
       const setter = field==='1' ? setDevol1Check : setDevol2Check;
       const cur = getter(name);
-      const next = cur==='si' ? 'no' : (cur==='no' ? null : 'si');
+      const next = cur==='si' ? null : 'si';
       await setter(name, next);
       render();
     });
@@ -2352,7 +2360,7 @@ function renderMonitoreos(main){
   tbody.querySelectorAll('input[type="date"]').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
       if(!APP.isAdmin) return;
-      APP.overrides.monitoreos[inp.dataset.name] = inp.value;
+      APP.overrides.monitoreos[inp.dataset.name] = inp.value || null;
       await saveOverrides();
       render();
     });
