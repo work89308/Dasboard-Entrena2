@@ -2512,15 +2512,10 @@ function renderConexion(main){
         <thead>
           <tr>
             <th rowspan="2" style="min-width:100px;">Fecha</th>
-            ${NAMES.map((n,i)=>`<th colspan="2" style="cursor:pointer; ${i>0?`border-left:2px solid ${COLOR[n]};`:''}" data-open="${n}">
-              <div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
-                <span style="width:18px;height:18px;border-radius:50%;background:${COLOR[n]};color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;">${initials(n)}</span>
-                <span style="color:${COLOR[n]};">${n.split(' ')[0]} ${n.split(' ')[1]?.[0]||''}.</span>
-              </div>
-            </th>`).join('')}
+            ${NAMES.map((n,i)=>`<th colspan="2" style="cursor:pointer; color:${COLOR[n]}; ${i>0?'border-left:1px solid var(--line);':''}" data-open="${n}">${n.split(' ')[0]} ${n.split(' ')[1]?.[0]||''}.</th>`).join('')}
           </tr>
           <tr>
-            ${NAMES.map((n,i)=>`<th style="min-width:78px; ${i>0?`border-left:2px solid ${COLOR[n]};`:''}">Entrada</th><th style="min-width:78px;">Salida</th>`).join('')}
+            ${NAMES.map((n,i)=>`<th style="min-width:78px; ${i>0?'border-left:1px solid var(--line);':''}">Entrada</th><th style="min-width:78px;">Salida</th>`).join('')}
           </tr>
         </thead>
         <tbody id="conex-tbody"></tbody>
@@ -2556,7 +2551,7 @@ function renderConexion(main){
       const outTag = hasConexTag(entry.out) ? ' has-tag' : '';
       const inCls = 'mono conex-input ' + conexColorClass(entry.colorIn) + inTag;
       const outCls = 'mono conex-input ' + conexColorClass(entry.colorOut) + outTag;
-      const dividerStyle = i>0 ? `border-left:2px solid ${COLOR[name]};` : '';
+      const dividerStyle = i>0 ? 'border-left:1px solid var(--line);' : '';
       cells += `<td style="${dividerStyle}"><input type="text" class="${inCls}" data-date="${date}" data-name="${name}" data-field="in" data-colorfield="colorIn" value="${fmtTimeShort(entry.in)}" style="width:90px;" placeholder="—"></td>`;
       cells += `<td><input type="text" class="${outCls}" data-date="${date}" data-name="${name}" data-field="out" data-colorfield="colorOut" value="${fmtTimeShort(entry.out)}" style="width:90px;" placeholder="—"></td>`;
     });
