@@ -596,7 +596,18 @@ async function loadOverrides(){
   }catch(e){ console.warn('No se pudieron cargar los datos guardados', e); }
 }
 
-function deepMergePreferLocal(remote, local){
+// Campos (rutas tipo "roster_month.jul.Valeria Barroso.horario") tocados por un
+// setX() desde que se cargó la página. deepMergePreferLocal solo debe preferir
+// el valor local por sobre el remoto en esas rutas puntuales: si se prefiriera
+// local en cualquier campo con solo haberlo leído en algún momento (aunque no
+// se haya editado), dos pestañas abiertas a la vez -o una vieja que quedó
+// abierta de antes- podían hacer que un guardado sin relación pisara con un
+// valor viejo un campo que otra sesión acababa de guardar más fresco.
+const dirtyPaths = new Set();
+function markDirty(path){ dirtyPaths.add(path); }
+
+function deepMergePreferLocal(remote, local, path){
+  path = path || '';
   if(local===undefined) return remote;
   if(Array.isArray(local) || Array.isArray(remote)){
     // Listas como notas_equipo: se combinan por id en vez de que la local pise
@@ -611,10 +622,17 @@ function deepMergePreferLocal(remote, local){
     return local;
   }
   const isPlainObj = v => v!==null && typeof v==='object' && !Array.isArray(v);
-  if(!isPlainObj(local) || !isPlainObj(remote)) return local;
-  const out = Object.assign({}, remote);
-  Object.keys(local).forEach(k=>{ out[k] = deepMergePreferLocal(remote[k], local[k]); });
-  return out;
+  if(isPlainObj(local) && isPlainObj(remote)){
+    const out = Object.assign({}, remote);
+    Object.keys(local).forEach(k=>{ out[k] = deepMergePreferLocal(remote[k], local[k], path ? `${path}.${k}` : k); });
+    return out;
+  }
+  if(isPlainObj(local) !== isPlainObj(remote)) return local;
+  // Los dos lados son valores simples (o ambos null): solo gana el local si
+  // esta ruta puntual se editó en esta sesión; si no, se prefiere lo remoto
+  // para no revivir un dato viejo que esta sesión nunca tocó.
+  if(dirtyPaths.has(path)) return local;
+  return remote!==undefined ? remote : local;
 }
 
 let saveInFlight = false;
@@ -687,6 +705,7 @@ async function persistOverridesToBackend(){
       // vuelta del loop de arriba va a guardar el estado actual completo.
       if(!saveQueued){
         APP.overrides = merged;
+        dirtyPaths.clear();
         try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(APP.overrides)); }catch(e){}
         pendingWrites = 0;
         updateSaveStatus('saved');
@@ -973,6 +992,7 @@ async function setRosterMonth(name, mk, field, value){
   if(!APP.overrides.roster_month[mk]) APP.overrides.roster_month[mk] = {};
   if(!APP.overrides.roster_month[mk][name]) APP.overrides.roster_month[mk][name] = {};
   APP.overrides.roster_month[mk][name][field] = value;
+  markDirty(`roster_month.${mk}.${name}.${field}`);
   await saveOverrides();
 }
 function rekeyProp(obj, oldKey, newKey){
@@ -1026,6 +1046,7 @@ async function renamePerson(currentName, newNameRaw){
   if(!APP.overrides.nameRenames) APP.overrides.nameRenames = {};
   const originalKey = Object.keys(APP.overrides.nameRenames).find(k=> APP.overrides.nameRenames[k]===currentName) || currentName;
   APP.overrides.nameRenames[originalKey] = newName;
+  markDirty(`nameRenames.${originalKey}`);
   migrateName(currentName, newName);
   await saveOverrides();
   return true;
@@ -1092,6 +1113,7 @@ async function setMetric(name, mk, field, value){
   if(!APP.overrides.metrics[mk]) APP.overrides.metrics[mk] = {};
   if(!APP.overrides.metrics[mk][name]) APP.overrides.metrics[mk][name] = {};
   APP.overrides.metrics[mk][name][field] = (field==='Nota' && typeof value==='string') ? escapeHtml(value) : value;
+  markDirty(`metrics.${mk}.${name}.${field}`);
   await saveOverrides();
 }
 function getConexEntry(date, name){
@@ -1104,6 +1126,7 @@ async function setConexEntry(date, name, field, value){
   if(!APP.overrides.conex[date]) APP.overrides.conex[date] = {};
   if(!APP.overrides.conex[date][name]) APP.overrides.conex[date][name] = {};
   APP.overrides.conex[date][name][field] = value==null ? null : escapeHtml(value);
+  markDirty(`conex.${date}.${name}.${field}`);
   await saveOverrides();
 }
 async function addConexDate(date){
@@ -1121,6 +1144,7 @@ function getDevol1(name){
 async function setDevol1(name, value){
   if(!APP.isAdmin) return;
   APP.overrides.devol1[name] = value;
+  markDirty(`devol1.${name}`);
   await saveOverrides();
 }
 function getBirthday(name){
@@ -1146,6 +1170,7 @@ async function setBirthday(name, mm, dd){
   }else{
     APP.overrides.birthdays[name] = null;
   }
+  markDirty(`birthdays.${name}`);
   await saveOverrides();
 }
 function getEquipoNotas(){
@@ -1237,6 +1262,7 @@ async function setDevol2(name, field, value){
   const cur = getDevol2(name);
   cur[field] = (field==='confeccion' && typeof value==='string') ? escapeHtml(value) : value;
   APP.overrides.devol2[name] = cur;
+  markDirty(`devol2.${name}.${field}`);
   await saveOverrides();
 }
 function getDevol1Check(name){
@@ -1245,6 +1271,7 @@ function getDevol1Check(name){
 async function setDevol1Check(name, value){
   if(!APP.isAdmin) return;
   APP.overrides.devol1_check[name] = value;
+  markDirty(`devol1_check.${name}`);
   await saveOverrides();
 }
 function getDevol2Check(name){
@@ -1253,6 +1280,7 @@ function getDevol2Check(name){
 async function setDevol2Check(name, value){
   if(!APP.isAdmin) return;
   APP.overrides.devol2_check[name] = value;
+  markDirty(`devol2_check.${name}`);
   await saveOverrides();
 }
 function devolCheckDot(name, field, value){
@@ -1273,6 +1301,7 @@ async function setInboxCheck(name, mkey, value){
   if(!APP.isAdmin) return;
   if(!APP.overrides.inbox[name]) APP.overrides.inbox[name] = {};
   APP.overrides.inbox[name][mkey] = value;
+  markDirty(`inbox.${name}.${mkey}`);
   await saveOverrides();
 }
 function inboxDots(name, check){
@@ -1716,6 +1745,7 @@ function renderEquipo(main){
       else next='ok';
       if(!APP.overrides.prod_check[name]) APP.overrides.prod_check[name]={};
       APP.overrides.prod_check[name][mkey]=next;
+      markDirty(`prod_check.${name}.${mkey}`);
       await saveOverrides();
       render();
     });
@@ -2082,6 +2112,7 @@ function renderColabDevoluciones(body, name){
   document.getElementById('monitoreo-fecha').addEventListener('change', async (e)=>{
     if(!APP.isAdmin) return;
     APP.overrides.monitoreos[name] = e.target.value || null;
+    markDirty(`monitoreos.${name}`);
     await saveOverrides();
     render();
   });
@@ -2361,6 +2392,7 @@ function renderMonitoreos(main){
     inp.addEventListener('change', async ()=>{
       if(!APP.isAdmin) return;
       APP.overrides.monitoreos[inp.dataset.name] = inp.value || null;
+      markDirty(`monitoreos.${inp.dataset.name}`);
       await saveOverrides();
       render();
     });
@@ -2480,10 +2512,15 @@ function renderConexion(main){
         <thead>
           <tr>
             <th rowspan="2" style="min-width:100px;">Fecha</th>
-            ${NAMES.map(n=>`<th colspan="2" style="cursor:pointer;" data-open="${n}">${n.split(' ')[0]} ${n.split(' ')[1]?.[0]||''}.</th>`).join('')}
+            ${NAMES.map((n,i)=>`<th colspan="2" style="cursor:pointer; ${i>0?`border-left:2px solid ${COLOR[n]};`:''}" data-open="${n}">
+              <div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
+                <span style="width:18px;height:18px;border-radius:50%;background:${COLOR[n]};color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;">${initials(n)}</span>
+                <span style="color:${COLOR[n]};">${n.split(' ')[0]} ${n.split(' ')[1]?.[0]||''}.</span>
+              </div>
+            </th>`).join('')}
           </tr>
           <tr>
-            ${NAMES.map(()=>`<th style="min-width:78px;">Entrada</th><th style="min-width:78px;">Salida</th>`).join('')}
+            ${NAMES.map((n,i)=>`<th style="min-width:78px; ${i>0?`border-left:2px solid ${COLOR[n]};`:''}">Entrada</th><th style="min-width:78px;">Salida</th>`).join('')}
           </tr>
         </thead>
         <tbody id="conex-tbody"></tbody>
@@ -2513,13 +2550,14 @@ function renderConexion(main){
     const tr = document.createElement('tr');
     if(isSaturday) tr.className = 'conex-saturday';
     let cells = `<td class="mono" style="white-space:nowrap;">${isSaturday ? `<b>${fmtDateCompact(date)}</b>` : fmtDateCompact(date)}</td>`;
-    NAMES.forEach(name=>{
+    NAMES.forEach((name,i)=>{
       const entry = getConexEntry(date, name);
       const inTag = hasConexTag(entry.in) ? ' has-tag' : '';
       const outTag = hasConexTag(entry.out) ? ' has-tag' : '';
       const inCls = 'mono conex-input ' + conexColorClass(entry.colorIn) + inTag;
       const outCls = 'mono conex-input ' + conexColorClass(entry.colorOut) + outTag;
-      cells += `<td><input type="text" class="${inCls}" data-date="${date}" data-name="${name}" data-field="in" data-colorfield="colorIn" value="${fmtTimeShort(entry.in)}" style="width:90px;" placeholder="—"></td>`;
+      const dividerStyle = i>0 ? `border-left:2px solid ${COLOR[name]};` : '';
+      cells += `<td style="${dividerStyle}"><input type="text" class="${inCls}" data-date="${date}" data-name="${name}" data-field="in" data-colorfield="colorIn" value="${fmtTimeShort(entry.in)}" style="width:90px;" placeholder="—"></td>`;
       cells += `<td><input type="text" class="${outCls}" data-date="${date}" data-name="${name}" data-field="out" data-colorfield="colorOut" value="${fmtTimeShort(entry.out)}" style="width:90px;" placeholder="—"></td>`;
     });
     tr.innerHTML = cells;
