@@ -2106,7 +2106,7 @@ function renderColabDevoluciones(body, name){
   body.innerHTML = `
     <div class="grid grid-3">
       <div class="card">
-        <h3>Monitoreo de escucha</h3>
+        <h3>Monitoreo Express</h3>
         <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
           <label style="font-size:12px; color:var(--ink-soft);">Fecha del último monitoreo
             <input type="date" id="monitoreo-fecha" value="${mon.ultimo||''}">
@@ -2371,7 +2371,7 @@ function renderMonitoreos(main){
     ${atrasados.length && !APP.bannerDismissed.monitoreos ? `<div class="banner">${iconAlert()} <span><b>${atrasados.length}</b> colaborador${atrasados.length>1?'es':''} llevan más de 14 días sin monitoreo.</span><button class="banner-close" data-banner="monitoreos" title="Cerrar">✕</button></div>` : (!atrasados.length ? `<div class="banner banner-ok">${iconOk()} <span>Todo el equipo está al día con sus monitoreos.</span></div>` : '')}
     <div class="grid grid-2" style="grid-template-columns:1fr 1.5fr; margin-bottom:16px;">
       <div class="card">
-        <h3>Monitoreo de escucha</h3>
+        <h3>Monitoreo Express</h3>
         <div class="scroll-x">
         <table>
           <thead><tr><th>Nombre</th><th>Estado</th><th>Actualizar fecha</th></tr></thead>
