@@ -101,22 +101,34 @@ body{
   display:flex;
   align-items:center;
   gap:10px;
-  padding: 4px 8px 26px 8px;
+  padding: 4px 8px 22px 8px;
 }
+.brand-left{ display:flex; align-items:center; gap:10px; min-width:0; }
 .brand-mark{
   width:34px;height:34px;
   background-image: var(--logo-img);
   background-size:contain; background-repeat:no-repeat; background-position:center;
   flex-shrink:0;
 }
-.brand-text{ display:flex; flex-direction:column; line-height:1.15; }
-.brand-text b{ font-family:var(--font-display); font-size:15.5px; font-weight:600; letter-spacing:.2px;}
-.brand-text span{ font-size:11px; color:#9FC6BF; }
+.brand-text{ display:flex; flex-direction:column; line-height:1.15; min-width:0; }
+.brand-text b{ font-family:var(--font-display); font-size:15.5px; font-weight:600; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.brand-text span{ font-size:11px; color:#9FC6BF; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.theme-toggle-icon{
+  width:27px; height:27px; border-radius:50%; flex-shrink:0;
+  border:none; cursor:pointer; background:rgba(255,255,255,0.08); color:#EAF3F1;
+  display:flex; align-items:center; justify-content:center;
+}
+.theme-toggle-icon:hover{ background:rgba(255,255,255,0.16); }
 
+.nav-section-row{ display:flex; align-items:center; justify-content:space-between; padding:0 12px; margin:2px 0 8px; }
+.nav-section-label{
+  font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:#7FA39D;
+}
 .nav{ display:flex; flex-direction:column; gap:2px; margin-top: 6px;}
 .nav-item{
   display:flex; align-items:center; gap:11px;
-  padding:10px 12px; border-radius:10px;
+  padding:10px 12px; border-radius:12px;
   color:#C9E2DD; font-size:13.5px; font-weight:500;
   cursor:pointer; user-select:none;
   border:1px solid transparent;
@@ -124,7 +136,15 @@ body{
 }
 .nav-item svg{ width:17px; height:17px; opacity:.85; flex-shrink:0; }
 .nav-item:hover{ background: rgba(255,255,255,0.06); color:#fff; }
-.nav-item.active{ background: rgba(255,255,255,0.12); color:#fff; border-color: rgba(255,255,255,0.08); }
+.nav-item.active{
+  background: rgba(0,0,0,0.28); color:#fff; border-color:transparent; font-weight:600;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+.nav-badge{
+  margin-left:auto; flex-shrink:0; background:var(--accent-mint); color:#0B2E2A;
+  font-size:10px; font-weight:700; padding:1px 7px; border-radius:20px;
+}
+.nav-item.active .nav-badge{ background:#fff; color:var(--brand-dark); }
 
 .sidebar-foot{
   margin-top:auto;
@@ -478,11 +498,17 @@ select:focus, input:focus{ border-color: var(--brand); }
 
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-mark"></div>
-      <div class="brand-text">
-        <b>Equipo Entrenados</b>
-        <span>Equipo Atención Telefónica</span>
+      <div class="brand-left">
+        <div class="brand-mark"></div>
+        <div class="brand-text">
+          <b>Equipo Entrenados</b>
+          <span>Equipo Atención Telefónica</span>
+        </div>
       </div>
+    </div>
+    <div class="nav-section-row">
+      <div class="nav-section-label">Menú</div>
+      <button id="theme-toggle" class="theme-toggle-icon" title="Cambiar modo claro/oscuro"></button>
     </div>
     <nav class="nav" id="nav">
       <div class="nav-item active" data-view="resumen">
@@ -504,13 +530,13 @@ select:focus, input:focus{ border-color: var(--brand); }
       <div class="nav-item" data-view="monitoreos">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
         Monitoreos y devoluciones
+        <span class="nav-badge" id="nav-badge-monitoreos" style="display:none;"></span>
       </div>
     </nav>
     <div class="sidebar-foot">
       <span id="foot-date"></span>
       <span>10 personas activas</span>
       <span id="auth-status"></span>
-      <button id="theme-toggle" class="theme-toggle-btn" title="Cambiar modo claro/oscuro"></button>
     </div>
   </aside>
 
@@ -558,6 +584,7 @@ const APP = {
   conexDateIdx: null,
   colaborador: null,
   colabTab: 'productividad',
+  lastUpdated: null,
   bannerDismissed: { resumen:false, monitoreos:false, birthdays:false },
   overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, devol1_check:{}, devol2_check:{}, inbox:{}, nameRenames:{}, birthdays:{}, notas_equipo:[] },
 };
@@ -580,12 +607,13 @@ async function loadOverrides(){
     try{
       const { data, error } = await supabaseClient
         .from('dashboard_overrides')
-        .select('data')
+        .select('data, updated_at')
         .eq('id', OVERRIDES_ROW_ID)
         .maybeSingle();
       if(error) throw error;
       if(data && data.data){
         APP.overrides = Object.assign({}, DEFAULT_OVERRIDES, data.data);
+        APP.lastUpdated = data.updated_at ? new Date(data.updated_at) : null;
         return;
       }
     }catch(e){ console.warn('No se pudo cargar desde Supabase, se usa respaldo local', e); }
@@ -718,6 +746,7 @@ async function persistOverridesToBackend(){
       // vuelta del loop de arriba va a guardar el estado actual completo.
       if(!saveQueued){
         APP.overrides = merged;
+        APP.lastUpdated = new Date();
         dirtyPaths.clear();
         try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(APP.overrides)); }catch(e){}
         pendingWrites = 0;
@@ -910,7 +939,10 @@ function applyTheme(mode){
   document.documentElement.classList.toggle('dark', mode==='dark');
   try{ localStorage.setItem(THEME_KEY, mode); }catch(e){}
   const btn = document.getElementById('theme-toggle');
-  if(btn) btn.innerHTML = themeIcon(mode==='dark') + (mode==='dark' ? ' Modo claro' : ' Modo oscuro');
+  if(btn){
+    btn.innerHTML = themeIcon(mode==='dark');
+    btn.title = mode==='dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+  }
 }
 function initTheme(){
   const stored = (()=>{ try{ return localStorage.getItem(THEME_KEY); }catch(e){ return null; } })();
@@ -946,6 +978,13 @@ function minutesToHHMM(min){
 }
 function fmtDateLong(d){
   return d.toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+}
+function fmtLastUpdated(d){
+  if(!d) return null;
+  const time = d.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+  const isToday = d.toDateString() === TODAY.toDateString();
+  const day = isToday ? 'hoy' : d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
+  return `Última actualización: ${day}, ${time}`;
 }
 function fmtDateShort(iso){
   const d = new Date(iso+'T00:00:00');
@@ -1401,6 +1440,13 @@ document.getElementById('sidebar-backdrop').addEventListener('click', ()=>{
   document.body.classList.remove('sidebar-open');
 });
 
+function updateNavBadges(){
+  const badge = document.getElementById('nav-badge-monitoreos');
+  if(!badge) return;
+  const atrasados = NAMES.filter(n=>{ const m = getMonitoreo(n); return m.dias!=null && m.dias>14; }).length;
+  badge.textContent = atrasados;
+  badge.style.display = atrasados ? 'inline-block' : 'none';
+}
 function render(){
   const main = document.getElementById('main');
   main.innerHTML = '';
@@ -1410,6 +1456,7 @@ function render(){
   else if(APP.view==='productividad') renderProductividad(main);
   else if(APP.view==='monitoreos') renderMonitoreos(main);
   else if(APP.view==='conexion') renderConexion(main);
+  updateNavBadges();
 }
 function goToColaborador(name){
   APP.view='colaborador';
@@ -1454,7 +1501,10 @@ function renderResumen(main){
         <p>Panorama general de productividad, monitoreos y asistencia.</p>
       </div>
       <div class="topbar-right">
-        <div class="today-chip">${fmtDateLong(TODAY)}</div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
+          <div class="today-chip">${fmtDateLong(TODAY)}</div>
+          ${APP.lastUpdated ? `<span style="font-size:10.5px; color:var(--ink-faint);">${fmtLastUpdated(APP.lastUpdated)}</span>` : ''}
+        </div>
         <div class="avatar-stack" id="resumen-avatar-stack">
           ${stackNames.map(n=> `<span data-open="${n}">${avatar(n,34)}</span>`).join('')}
           ${stackRest>0 ? `<div class="avatar more" data-view-link="equipo" style="width:34px;height:34px;font-size:11px;">+${stackRest}</div>` : ''}
