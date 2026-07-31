@@ -35,8 +35,8 @@
   --status-home: #8B5CF6;
   --status-none: #E7ECEC;
   --status-none-border: #C7D2D1;
-  --radius: 14px;
-  --shadow: 0 1px 2px rgba(16,38,42,0.04), 0 6px 20px rgba(16,38,42,0.06);
+  --radius: 22px;
+  --shadow: 0 2px 6px rgba(16,38,42,0.05), 0 14px 28px rgba(16,38,42,0.07);
   --font-display: 'Sora', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -52,7 +52,7 @@
   --brand-soft: rgba(63,174,150,0.16);
   --accent-amber-soft: rgba(228,161,33,0.16);
   --accent-coral-soft: rgba(214,91,69,0.18);
-  --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 6px 20px rgba(0,0,0,0.35);
+  --shadow: 0 2px 6px rgba(0,0,0,0.35), 0 14px 30px rgba(0,0,0,0.32);
 }
 :root.dark tbody tr:hover{ background:#1D2A2B; }
 :root.dark td{ border-bottom-color:#243334; }
@@ -229,7 +229,7 @@ body.visitor-mode #equipo-nota-add{
 .grid-2{ grid-template-columns: 1.4fr 1fr; }
 .grid-3{ grid-template-columns: repeat(3, 1fr); }
 .card{
-  background: var(--bg-panel); border:1px solid var(--line); border-radius: var(--radius);
+  background: var(--bg-panel); border:none; border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 20px;
 }
 .card h3{
@@ -239,7 +239,7 @@ body.visitor-mode #equipo-nota-add{
 .card h3 .sub{ font-family: var(--font-body); font-weight:500; font-size:11.5px; color:var(--ink-faint); }
 
 .kpi{
-  background: var(--bg-panel); border:1px solid var(--line); border-radius: var(--radius);
+  background: var(--bg-panel); border:none; border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 18px 20px; position:relative; overflow:hidden;
 }
 .kpi .label{ font-size:12px; color:var(--ink-soft); font-weight:500; margin-bottom:8px; }
@@ -262,13 +262,6 @@ body.visitor-mode #equipo-nota-add{
 .kpi .icon-badge.amber{ background:var(--accent-amber-soft); color:var(--accent-amber); }
 .kpi .icon-badge.blue{ background:rgba(58,110,165,.14); color:var(--accent-blue); }
 
-/* ---------- Resumen: prueba de cards más redondeadas, solo en esta vista ---------- */
-.resumen-modern .card,
-.resumen-modern .kpi{
-  border-radius:22px; border:none;
-  box-shadow:0 2px 6px rgba(16,38,42,.05), 0 14px 28px rgba(16,38,42,.07);
-}
-.resumen-modern .banner{ border-radius:18px; }
 .avatar-stack{ display:flex; align-items:center; }
 .avatar-stack .avatar{ border:2.5px solid var(--bg); margin-left:-10px; cursor:pointer; }
 .avatar-stack .avatar:first-child{ margin-left:0; }
@@ -383,7 +376,7 @@ select:focus, input:focus{ border-color: var(--brand); }
 .empty{ text-align:center; padding:40px 20px; color:var(--ink-faint); font-size:13px; }
 
 .banner{
-  display:flex; align-items:center; gap:12px; padding:14px 18px; border-radius:12px; margin-bottom:20px;
+  display:flex; align-items:center; gap:12px; padding:14px 18px; border-radius:18px; margin-bottom:20px;
   background: var(--accent-coral-soft); border:1px solid #F2CCC2; color:#9A3B27; font-size:13px; font-weight:500;
 }
 .banner svg{ width:18px;height:18px; flex-shrink:0; }
@@ -1455,7 +1448,6 @@ function renderResumen(main){
   const stackRest = NAMES.length - stackNames.length;
 
   main.innerHTML = `
-    <div class="resumen-modern">
     <div class="topbar">
       <div>
         <h1>Resumen del equipo</h1>
@@ -1542,7 +1534,6 @@ function renderResumen(main){
     <div class="grid" id="resumen-cards" style="grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));"></div>
 
     <div class="foot-note">Equipo Entrenados · Datos importados desde planilla de seguimiento 2026 · Hacé clic en una persona para ver su ficha completa</div>
-    </div>
   `;
 
   // ---- populate DOM ----
