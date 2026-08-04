@@ -318,8 +318,8 @@ tbody tr:hover{ background: #FAFBFB; }
 
 /* badges */
 .badge{
-  display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600;
-  padding: 4px 9px; border-radius:20px;
+  display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:600;
+  padding: 4px 10px; border-radius:20px;
 }
 .badge.ok{ background: var(--brand-soft); color: var(--brand); }
 .badge.warn{ background: var(--accent-amber-soft); color:#8A5F09; }
@@ -359,6 +359,10 @@ tbody tr:hover{ background: #FAFBFB; }
 
 /* devolución check (Equipo) */
 .devol-dot{ cursor:pointer; margin:0 auto; }
+
+/* devoluciones (Monitoreos y devoluciones) */
+.dev-cell{ display:flex; align-items:center; gap:7px; }
+.dev-dot{ width:9px; height:9px; border-radius:3px; flex-shrink:0; }
 
 /* self-drawn charts (no external library, always render) */
 .rankbar-row{ display:flex; align-items:center; gap:10px; margin-bottom:9px; }
@@ -2441,25 +2445,15 @@ function renderMonitoreos(main){
       </div>
     </div>
 
-    <div class="grid grid-2">
-      <div class="card">
-        <h3>Devolución 1er semestre</h3>
-        <div class="scroll-x">
-        <table>
-          <thead><tr><th style="width:55%;">Nombre</th><th>Fecha</th></tr></thead>
-          <tbody id="devol1-tbody"></tbody>
-        </table>
-        </div>
+    <div class="card">
+      <h3>Devoluciones</h3>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th style="width:40%;">Nombre</th><th>1er semestre</th><th>2do semestre</th></tr></thead>
+        <tbody id="devol-tbody"></tbody>
+      </table>
       </div>
-      <div class="card">
-        <h3>Devolución 2</h3>
-        <div class="scroll-x">
-        <table>
-          <thead><tr><th style="width:55%;">Nombre</th><th>Fecha</th></tr></thead>
-          <tbody id="devol2-tbody"></tbody>
-        </table>
-        </div>
-      </div>
+      ${statusLegend([['var(--status-done)','Realizada'],['var(--status-none)','Sin dato']])}
     </div>
     <div class="foot-note">Regla de monitoreo: hasta 14 días = al día · 15–21 días = atrasado · más de 21 días = muy atrasado. Hacé clic en un nombre para abrir su ficha completa.</div>
   `;
@@ -2513,34 +2507,24 @@ function renderMonitoreos(main){
     });
   });
 
-  const d1tbody = document.getElementById('devol1-tbody');
+  const devolTbody = document.getElementById('devol-tbody');
   NAMES.forEach(name=>{
     const d1 = getDevol1(name);
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><div class="name-cell" data-open="${name}">${avatar(name,24)} ${name}</div></td>
-      <td><input type="date" class="devol1-input" data-name="${name}" value="${d1||''}"></td>
-    `;
-    d1tbody.appendChild(tr);
-  });
-  d1tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
-  d1tbody.querySelectorAll('.devol1-input').forEach(inp=>{
-    inp.addEventListener('change', async ()=>{ await setDevol1(inp.dataset.name, inp.value || null); });
-  });
-
-  const d2tbody = document.getElementById('devol2-tbody');
-  NAMES.forEach(name=>{
     const d2 = getDevol2(name);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><div class="name-cell" data-open="${name}">${avatar(name,24)} ${name}</div></td>
-      <td><input type="date" class="devol2-input" data-name="${name}" data-field="fecha" value="${d2.fecha||''}"></td>
+      <td><div class="dev-cell"><span class="dev-dot" style="background:${d1?'var(--status-done)':'var(--status-none)'};border:${d1?'none':'1px solid var(--status-none-border)'};"></span><input type="date" class="devol1-input" data-name="${name}" value="${d1||''}"></div></td>
+      <td><div class="dev-cell"><span class="dev-dot" style="background:${d2.fecha?'var(--status-done)':'var(--status-none)'};border:${d2.fecha?'none':'1px solid var(--status-none-border)'};"></span><input type="date" class="devol2-input" data-name="${name}" data-field="fecha" value="${d2.fecha||''}"></div></td>
     `;
-    d2tbody.appendChild(tr);
+    devolTbody.appendChild(tr);
   });
-  d2tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
-  d2tbody.querySelectorAll('.devol2-input').forEach(inp=>{
-    inp.addEventListener('change', async ()=>{ await setDevol2(inp.dataset.name, inp.dataset.field, inp.value.trim() || null); });
+  devolTbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  devolTbody.querySelectorAll('.devol1-input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{ await setDevol1(inp.dataset.name, inp.value || null); render(); });
+  });
+  devolTbody.querySelectorAll('.devol2-input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{ await setDevol2(inp.dataset.name, inp.dataset.field, inp.value.trim() || null); render(); });
   });
 
   main.querySelectorAll('.banner-close').forEach(btn=>{
