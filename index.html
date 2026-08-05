@@ -1702,21 +1702,22 @@ function monthLockControlHtml(mk){
     ? `<button class="btn" id="prod-lock-toggle" data-mk="${mk}" data-action="unlock" title="Se bloquea automáticamente para evitar cambios accidentales">${iconLock(false)} Mes bloqueado</button>`
     : `<button class="btn" id="prod-lock-toggle" data-mk="${mk}" data-action="lock">${iconLock(true)} Volver a bloquear</button>`;
 }
+function toggleMonthLock(mk){
+  if(!APP.isAdmin || !isPastMonth(mk)) return;
+  if(isMonthLocked(mk)){
+    if(confirm(`¿Desbloquear ${MONTH_LABELS[mk]} para editar? Recordá volver a bloquearlo cuando termines para evitar cambios accidentales.`)){
+      APP.unlockedMonths.add(mk);
+      render();
+    }
+  } else {
+    APP.unlockedMonths.delete(mk);
+    render();
+  }
+}
 function wireMonthLockToggle(container){
   const btn = container.querySelector('#prod-lock-toggle');
   if(!btn) return;
-  btn.addEventListener('click', ()=>{
-    const mkk = btn.dataset.mk;
-    if(btn.dataset.action==='unlock'){
-      if(confirm(`¿Desbloquear ${MONTH_LABELS[mkk]} para editar? Recordá volver a bloquearlo cuando termines para evitar cambios accidentales.`)){
-        APP.unlockedMonths.add(mkk);
-        render();
-      }
-    } else {
-      APP.unlockedMonths.delete(mkk);
-      render();
-    }
-  });
+  btn.addEventListener('click', ()=> toggleMonthLock(btn.dataset.mk));
 }
 
 /* ================= EQUIPO ================= */
@@ -2105,7 +2106,7 @@ function renderColabProductividad(body, name){
       : (locked ? `<span class="lock-mini-btn" style="cursor:default;" title="Mes bloqueado">${iconLock(false)}</span>` : '');
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><b>${MONTH_LABELS[mk]}</b>${lockBtn}</td>
+      <td><b class="month-label"${APP.isAdmin&&isPastMonth(mk)?` data-mk="${mk}" style="cursor:pointer;" title="Doble clic para bloquear/desbloquear este mes"`:''}>${MONTH_LABELS[mk]}</b>${lockBtn}</td>
       <td>${metricInputCell(name,mk,'ATT',v.ATT)}</td>
       <td>${metricInputCell(name,mk,'ACW',v.ACW)}</td>
       <td>${metricInputCell(name,mk,'HOLD',v.HOLD)}</td>
@@ -2135,18 +2136,10 @@ function renderColabProductividad(body, name){
     });
   });
   tbody.querySelectorAll('.lock-mini-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const mkk = btn.dataset.mk;
-      if(isMonthLocked(mkk)){
-        if(confirm(`¿Desbloquear ${MONTH_LABELS[mkk]} para editar? Recordá volver a bloquearlo cuando termines para evitar cambios accidentales.`)){
-          APP.unlockedMonths.add(mkk);
-          render();
-        }
-      } else {
-        APP.unlockedMonths.delete(mkk);
-        render();
-      }
-    });
+    btn.addEventListener('click', ()=> toggleMonthLock(btn.dataset.mk));
+  });
+  tbody.querySelectorAll('.month-label[data-mk]').forEach(el=>{
+    el.addEventListener('dblclick', ()=> toggleMonthLock(el.dataset.mk));
   });
 }
 
@@ -2397,7 +2390,7 @@ function renderProductividad(main){
     <div class="card" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
       <div class="scroll-x">
         <div class="seg" id="prod-month-tabs" style="width:max-content;">
-          ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}">${MONTH_LABELS[m].slice(0,3)}${isMonthLocked(m)?`<span class="tab-lock">${iconLock(false)}</span>`:''}</button>`).join('')}
+          ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}"${isPastMonth(m)&&APP.isAdmin?' title="Doble clic para bloquear/desbloquear este mes"':''}>${MONTH_LABELS[m].slice(0,3)}${isMonthLocked(m)?`<span class="tab-lock">${iconLock(false)}</span>`:''}</button>`).join('')}
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -2417,7 +2410,7 @@ function renderProductividad(main){
       </table>
       </div>
     </div>
-    <div class="foot-note">AD = ausente/día libre ese mes. Elegí cualquier mes del año para cargar su productividad, tenga o no datos todavía. Los meses anteriores al actual se bloquean automáticamente para que no se editen por error; usá el candado para desbloquearlos si necesitás corregir algo.</div>
+    <div class="foot-note">AD = ausente/día libre ese mes. Elegí cualquier mes del año para cargar su productividad, tenga o no datos todavía. Los meses anteriores al actual se bloquean automáticamente para que no se editen por error; hacé doble clic en el nombre del mes (o usá el botón del candado) para desbloquearlo si necesitás corregir algo.</div>
   `;
 
   document.getElementById('prod-month-tabs').addEventListener('click', (e)=>{
@@ -2425,6 +2418,11 @@ function renderProductividad(main){
     if(!btn) return;
     APP.prodMonth = btn.dataset.month;
     render();
+  });
+  document.getElementById('prod-month-tabs').addEventListener('dblclick', (e)=>{
+    const btn = e.target.closest('button[data-month]');
+    if(!btn) return;
+    toggleMonthLock(btn.dataset.month);
   });
   wireExportPicker('prod-export-select', 'prod-export-pdf');
   wireMonthLockToggle(main);
