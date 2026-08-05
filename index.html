@@ -410,6 +410,15 @@ select:focus, input:focus{ border-color: var(--brand); }
 .banner-ok{ background:var(--brand-soft); border-color:#CFE7E2; color:var(--brand-dark); }
 :root.dark .banner-ok{ color:#8FE4CE; }
 
+/* locked (previous months) */
+.metric-input.locked{ background:#F2F5F5; color:var(--ink-soft); cursor:not-allowed; border-style:dashed; }
+:root.dark .metric-input.locked{ background:#1D2A2B; color:var(--ink-soft); }
+.seg button .tab-lock{ width:9px; height:9px; margin-left:3px; opacity:.6; vertical-align:-1px; }
+.lock-mini-btn{ border:none; background:none; padding:0; margin-left:6px; cursor:pointer; color:var(--ink-faint); vertical-align:-2px; }
+.lock-mini-btn:hover{ color:var(--brand); }
+.lock-mini-btn svg{ width:12px; height:12px; }
+.badge.neutral svg{ width:11px; height:11px; }
+
 /* scrollable panel for conex timeline */
 .scroll-x{ overflow-x:auto; }
 
@@ -591,7 +600,10 @@ const APP = {
   lastUpdated: null,
   bannerDismissed: { resumen:false, monitoreos:false, birthdays:false },
   overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, devol1_check:{}, devol2_check:{}, inbox:{}, nameRenames:{}, birthdays:{}, notas_equipo:[] },
+  unlockedMonths: new Set(), // meses anteriores desbloqueados manualmente para esta sesión (no se persiste)
 };
+function isPastMonth(mk){ return MONTH_KEYS.indexOf(mk) < MONTH_KEYS.indexOf(CURRENT_MONTH_KEY); }
+function isMonthLocked(mk){ return isPastMonth(mk) && !APP.unlockedMonths.has(mk); }
 const METRIC_FIELDS = ['ATT','ACW','HOLD','TMO','Llamados','ActDatos','GDigital','Nota'];
 const METRIC_LABELS = {ATT:'ATT', ACW:'ACW', HOLD:'HOLD', TMO:'TMO', Llamados:'Llamados', ActDatos:'% Datos', GDigital:'G. Digital', Nota:'Nota'};
 
@@ -1678,6 +1690,34 @@ function iconGift(){
     <path d="M12 8C10.5 8 9 7 9 5.5S10.5 3 12 5c1.5-2 3-1.5 3 0S13.5 8 12 8Z"/>
   </svg>`;
 }
+function iconLock(open){
+  return open
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 9-3"/></svg>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+}
+function monthLockControlHtml(mk){
+  const locked = isMonthLocked(mk);
+  if(!APP.isAdmin) return locked ? `<span class="badge neutral">${iconLock(false)} Mes bloqueado</span>` : '';
+  return locked
+    ? `<button class="btn" id="prod-lock-toggle" data-mk="${mk}" data-action="unlock" title="Se bloquea automáticamente para evitar cambios accidentales">${iconLock(false)} Mes bloqueado</button>`
+    : `<button class="btn" id="prod-lock-toggle" data-mk="${mk}" data-action="lock">${iconLock(true)} Volver a bloquear</button>`;
+}
+function wireMonthLockToggle(container){
+  const btn = container.querySelector('#prod-lock-toggle');
+  if(!btn) return;
+  btn.addEventListener('click', ()=>{
+    const mkk = btn.dataset.mk;
+    if(btn.dataset.action==='unlock'){
+      if(confirm(`¿Desbloquear ${MONTH_LABELS[mkk]} para editar? Recordá volver a bloquearlo cuando termines para evitar cambios accidentales.`)){
+        APP.unlockedMonths.add(mkk);
+        render();
+      }
+    } else {
+      APP.unlockedMonths.delete(mkk);
+      render();
+    }
+  });
+}
 
 /* ================= EQUIPO ================= */
 function renderEquipo(main){
@@ -2036,8 +2076,9 @@ function metricInputCell(name, mk, field, value){
   const isText = field==='Nota';
   const isTime = TIME_FIELDS.includes(field);
   const display = isTime ? fmtTimeShort(value) : (value==null?'':String(value));
-  return `<input type="text" class="mono metric-input" data-name="${name}" data-mk="${mk}" data-field="${field}"
-    value="${display}" placeholder="—"
+  const locked = isMonthLocked(mk);
+  return `<input type="text" class="mono metric-input${locked?' locked':''}" data-name="${name}" data-mk="${mk}" data-field="${field}"
+    value="${display}" placeholder="—" ${locked?'readonly title="Mes bloqueado — hacé clic en el candado para editar"':''}
     style="width:${isText?'150px':'86px'}; text-align:${isText?'left':'center'};">`;
 }
 function renderColabProductividad(body, name){
@@ -2058,9 +2099,13 @@ function renderColabProductividad(body, name){
   const tbody = document.getElementById('colab-metrics-tbody');
   MONTH_KEYS.forEach(mk=>{
     const v = getMetric(name, mk);
+    const locked = isMonthLocked(mk);
+    const lockBtn = APP.isAdmin && isPastMonth(mk)
+      ? `<button class="lock-mini-btn" data-mk="${mk}" title="${locked?'Mes bloqueado — clic para desbloquear':'Volver a bloquear'}">${iconLock(!locked)}</button>`
+      : (locked ? `<span class="lock-mini-btn" style="cursor:default;" title="Mes bloqueado">${iconLock(false)}</span>` : '');
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><b>${MONTH_LABELS[mk]}</b></td>
+      <td><b>${MONTH_LABELS[mk]}</b>${lockBtn}</td>
       <td>${metricInputCell(name,mk,'ATT',v.ATT)}</td>
       <td>${metricInputCell(name,mk,'ACW',v.ACW)}</td>
       <td>${metricInputCell(name,mk,'HOLD',v.HOLD)}</td>
@@ -2074,7 +2119,7 @@ function renderColabProductividad(body, name){
   });
   tbody.querySelectorAll('.metric-input').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
-      if(!APP.isAdmin) return;
+      if(!APP.isAdmin || isMonthLocked(inp.dataset.mk)) return;
       const {name:nm, mk, field} = inp.dataset;
       let val = inp.value.trim();
       if(val==='') val = null;
@@ -2087,6 +2132,20 @@ function renderColabProductividad(body, name){
       }
       await setMetric(nm, mk, field, val);
       inp.value = TIME_FIELDS.includes(field) ? fmtTimeShort(val) : (val==null?'':String(val));
+    });
+  });
+  tbody.querySelectorAll('.lock-mini-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const mkk = btn.dataset.mk;
+      if(isMonthLocked(mkk)){
+        if(confirm(`¿Desbloquear ${MONTH_LABELS[mkk]} para editar? Recordá volver a bloquearlo cuando termines para evitar cambios accidentales.`)){
+          APP.unlockedMonths.add(mkk);
+          render();
+        }
+      } else {
+        APP.unlockedMonths.delete(mkk);
+        render();
+      }
     });
   });
 }
@@ -2338,10 +2397,13 @@ function renderProductividad(main){
     <div class="card" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
       <div class="scroll-x">
         <div class="seg" id="prod-month-tabs" style="width:max-content;">
-          ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}">${MONTH_LABELS[m].slice(0,3)}</button>`).join('')}
+          ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}">${MONTH_LABELS[m].slice(0,3)}${isMonthLocked(m)?`<span class="tab-lock">${iconLock(false)}</span>`:''}</button>`).join('')}
         </div>
       </div>
-      ${exportPickerHtml('prod-export-select', 'prod-export-pdf')}
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        ${isPastMonth(mk) ? monthLockControlHtml(mk) : ''}
+        ${exportPickerHtml('prod-export-select', 'prod-export-pdf')}
+      </div>
     </div>
 
     <div class="card">
@@ -2355,7 +2417,7 @@ function renderProductividad(main){
       </table>
       </div>
     </div>
-    <div class="foot-note">AD = ausente/día libre ese mes. Elegí cualquier mes del año para cargar su productividad, tenga o no datos todavía.</div>
+    <div class="foot-note">AD = ausente/día libre ese mes. Elegí cualquier mes del año para cargar su productividad, tenga o no datos todavía. Los meses anteriores al actual se bloquean automáticamente para que no se editen por error; usá el candado para desbloquearlos si necesitás corregir algo.</div>
   `;
 
   document.getElementById('prod-month-tabs').addEventListener('click', (e)=>{
@@ -2365,6 +2427,7 @@ function renderProductividad(main){
     render();
   });
   wireExportPicker('prod-export-select', 'prod-export-pdf');
+  wireMonthLockToggle(main);
 
   const tbody = document.getElementById('prod-tbody');
   NAMES.forEach(name=>{
@@ -2386,7 +2449,7 @@ function renderProductividad(main){
   tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
   tbody.querySelectorAll('.metric-input').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
-      if(!APP.isAdmin) return;
+      if(!APP.isAdmin || isMonthLocked(inp.dataset.mk)) return;
       const {name:nm, mk:mkk, field} = inp.dataset;
       let val = inp.value.trim();
       if(val==='') val = null;
