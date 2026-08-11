@@ -1161,8 +1161,8 @@ function getMonitoreo(name){
   const d = new Date(ultimo+'T00:00:00');
   const dias = businessDaysSince(d, TODAY);
   let estado = 'Ok';
-  if(dias > 21) estado = 'Muy atrasado';
-  else if(dias > 14) estado = 'Atrasado';
+  if(dias > 14) estado = 'Muy atrasado';
+  else if(dias > 10) estado = 'Atrasado';
   return {ultimo, dias, estado};
 }
 function getProdCheck(name){
@@ -1458,7 +1458,7 @@ document.getElementById('sidebar-backdrop').addEventListener('click', ()=>{
 function updateNavBadges(){
   const badge = document.getElementById('nav-badge-monitoreos');
   if(!badge) return;
-  const atrasados = NAMES.filter(n=>{ const m = getMonitoreo(n); return m.dias!=null && m.dias>14; }).length;
+  const atrasados = NAMES.filter(n=>{ const m = getMonitoreo(n); return m.dias!=null && m.dias>10; }).length;
   badge.textContent = atrasados;
   badge.style.display = atrasados ? 'inline-block' : 'none';
 }
@@ -1492,7 +1492,7 @@ function renderResumen(main){
   const datosAvg = datosVals.length ? (datosVals.reduce((a,b)=>a+b,0)/datosVals.length) : null;
 
   const monitoreoRows = NAMES.map(n=>({name:n, ...getMonitoreo(n)}));
-  const atrasados = monitoreoRows.filter(r=>r.dias!=null && r.dias>14).sort((a,b)=>b.dias-a.dias);
+  const atrasados = monitoreoRows.filter(r=>r.dias!=null && r.dias>10).sort((a,b)=>b.dias-a.dias);
 
   const homeCount = NAMES.filter(n=>modalidadClass(getRosterMonth(n, CURRENT_MONTH_KEY).modalidad)==='home').length;
   const centralCount = NAMES.filter(n=>modalidadClass(getRosterMonth(n, CURRENT_MONTH_KEY).modalidad)==='central').length;
@@ -1532,7 +1532,7 @@ function renderResumen(main){
     ${atrasados.length && !APP.bannerDismissed.resumen ? `
     <div class="banner">
       ${iconAlert()}
-      <span><b>${atrasados.length} colaborador${atrasados.length>1?'es':''}</b> con monitoreo atrasado hace más de 14 días. Revisá la sección Monitoreos.</span>
+      <span><b>${atrasados.length} colaborador${atrasados.length>1?'es':''}</b> con monitoreo atrasado hace más de 10 días. Revisá la sección Monitoreos.</span>
       <button class="banner-close" data-banner="resumen" title="Cerrar">✕</button>
     </div>` : ''}
 
@@ -1579,7 +1579,7 @@ function renderResumen(main){
           ${atrasados.slice(0,5).map(r=>`
             <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;">
               <span class="name-cell">${avatar(r.name,22)} ${r.name}</span>
-              <span class="badge ${r.dias>21?'bad':'warn'}">${r.dias} días</span>
+              <span class="badge ${r.dias>14?'bad':'warn'}">${r.dias} días</span>
             </div>`).join('') || '<div class="empty" style="padding:10px 0;">Sin atrasos 🎉</div>'}
         </div>
       </div>
@@ -1661,9 +1661,9 @@ function renderResumen(main){
 
   // ---- charts (best-effort; never block the rest of the page) ----
   document.getElementById('chart-donut').innerHTML = donutSvg([
-    {label:'Al día', val: monitoreoRows.filter(r=>r.dias!=null && r.dias<=14).length, color:'var(--status-done)'},
-    {label:'Atrasado', val: monitoreoRows.filter(r=>r.dias!=null && r.dias>14 && r.dias<=21).length, color:'var(--status-pending)'},
-    {label:'Muy atrasado', val: monitoreoRows.filter(r=>r.dias!=null && r.dias>21).length, color:'var(--status-bad)'},
+    {label:'Al día', val: monitoreoRows.filter(r=>r.dias!=null && r.dias<=10).length, color:'var(--status-done)'},
+    {label:'Atrasado', val: monitoreoRows.filter(r=>r.dias!=null && r.dias>10 && r.dias<=14).length, color:'var(--status-pending)'},
+    {label:'Muy atrasado', val: monitoreoRows.filter(r=>r.dias!=null && r.dias>14).length, color:'var(--status-bad)'},
   ]);
 
   const rankSorted = NAMES.map(n=>({name:n, v: (metrics[n] && typeof metrics[n].GDigital==='number') ? metrics[n].GDigital : 0}))
@@ -1972,7 +1972,7 @@ function prodDots(name, check){
 function monitoreoBadge(mon){
   if(mon.dias==null) return `<span class="badge neutral">Sin dato</span>`;
   let cls='ok', label=`${mon.dias} días`;
-  if(mon.dias>21) cls='bad'; else if(mon.dias>14) cls='warn';
+  if(mon.dias>14) cls='bad'; else if(mon.dias>10) cls='warn';
   return `<span class="badge ${cls}">${label}</span>`;
 }
 
@@ -2453,7 +2453,7 @@ function renderMonitoreos(main){
     const da = a.dias==null?-1:a.dias, db=b.dias==null?-1:b.dias;
     return db-da;
   });
-  const atrasados = rows.filter(r=>r.dias!=null && r.dias>14);
+  const atrasados = rows.filter(r=>r.dias!=null && r.dias>10);
 
   main.innerHTML = `
     <div class="topbar">
@@ -2462,7 +2462,7 @@ function renderMonitoreos(main){
         <p>Seguimiento del monitoreo de escucha y de las devoluciones de desempeño por colaborador.</p>
       </div>
     </div>
-    ${atrasados.length && !APP.bannerDismissed.monitoreos ? `<div class="banner">${iconAlert()} <span><b>${atrasados.length}</b> colaborador${atrasados.length>1?'es':''} llevan más de 14 días sin monitoreo.</span><button class="banner-close" data-banner="monitoreos" title="Cerrar">✕</button></div>` : (!atrasados.length ? `<div class="banner banner-ok">${iconOk()} <span>Todo el equipo está al día con sus monitoreos.</span></div>` : '')}
+    ${atrasados.length && !APP.bannerDismissed.monitoreos ? `<div class="banner">${iconAlert()} <span><b>${atrasados.length}</b> colaborador${atrasados.length>1?'es':''} llevan más de 10 días sin monitoreo.</span><button class="banner-close" data-banner="monitoreos" title="Cerrar">✕</button></div>` : (!atrasados.length ? `<div class="banner banner-ok">${iconOk()} <span>Todo el equipo está al día con sus monitoreos.</span></div>` : '')}
     <div class="grid grid-2" style="grid-template-columns:1fr 1.5fr; margin-bottom:16px;">
       <div class="card">
         <h3>Monitoreo Express</h3>
@@ -2495,7 +2495,7 @@ function renderMonitoreos(main){
       </div>
       ${statusLegend([['var(--status-done)','Realizada'],['var(--status-none)','Sin dato']])}
     </div>
-    <div class="foot-note">Regla de monitoreo: hasta 14 días = al día · 15–21 días = atrasado · más de 21 días = muy atrasado. Hacé clic en un nombre para abrir su ficha completa.</div>
+    <div class="foot-note">Regla de monitoreo: hasta 10 días = al día · 11–14 días = atrasado · más de 14 días = muy atrasado. Hacé clic en un nombre para abrir su ficha completa.</div>
   `;
   const tbody = document.getElementById('mon-tbody');
   rows.forEach(r=>{
