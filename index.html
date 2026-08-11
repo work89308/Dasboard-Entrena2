@@ -297,6 +297,7 @@ th{
 td{ padding: 10px 10px; border-bottom:1px solid #EEF2F2; vertical-align:middle; }
 tr:last-child td{ border-bottom:none; }
 tbody tr:hover{ background: #FAFBFB; }
+#mon-tbody td, #inbox-tbody td{ height:52px; }
 .name-cell{ display:flex; align-items:center; gap:9px; }
 .name-cell[data-open]{ cursor:pointer; }
 .name-cell-actions{ display:flex; align-items:center; gap:2px; margin-left:auto; flex-shrink:0; }
@@ -411,8 +412,8 @@ select:focus, input:focus{ border-color: var(--brand); }
 :root.dark .banner-ok{ color:#8FE4CE; }
 
 /* locked (previous months) */
-.metric-input.locked{ background:#F2F5F5; color:var(--ink-soft); cursor:not-allowed; border-style:dashed; }
-:root.dark .metric-input.locked{ background:#1D2A2B; color:var(--ink-soft); }
+.metric-input.locked, .conex-input.locked{ background:#F2F5F5; color:var(--ink-soft); cursor:not-allowed; border-style:dashed; }
+:root.dark .metric-input.locked, :root.dark .conex-input.locked{ background:#1D2A2B; color:var(--ink-soft); }
 .seg button .tab-lock{ width:9px; height:9px; margin-left:3px; opacity:.6; vertical-align:-1px; }
 .lock-mini-btn{ display:inline-block; margin-left:6px; color:var(--ink-faint); vertical-align:-2px; }
 .lock-mini-btn svg{ width:12px; height:12px; }
@@ -791,14 +792,19 @@ async function persistOverridesToBackend(){
 }
 
 let saveStatusHideTimer = null;
+function saveStatusTopOffset(){
+  const tb = document.querySelector('.topbar');
+  return tb ? Math.round(tb.getBoundingClientRect().bottom + 10) : 20;
+}
 function updateSaveStatus(state){
   let el = document.getElementById('save-status-badge');
   if(!el){
     el = document.createElement('div');
     el.id = 'save-status-badge';
-    el.style.cssText = 'position:fixed; bottom:76px; right:20px; z-index:1200; font-size:12px; font-weight:600; padding:7px 14px; border-radius:20px; box-shadow:var(--shadow); transition:opacity .2s;';
+    el.style.cssText = 'position:fixed; right:20px; z-index:1200; font-size:12px; font-weight:600; padding:7px 14px; border-radius:20px; box-shadow:var(--shadow); transition:opacity .2s;';
     document.body.appendChild(el);
   }
+  el.style.top = saveStatusTopOffset()+'px';
   clearTimeout(saveStatusHideTimer);
   if(state==='saving'){
     el.textContent = 'Guardando cambios…';
@@ -2610,7 +2616,7 @@ function renderConexion(main){
     <div class="card" style="margin-bottom:16px;">
       <div class="scroll-x">
         <div class="seg" id="conex-month-tabs" style="width:max-content;">
-          ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}">${MONTH_LABELS[m].slice(0,3)}</button>`).join('')}
+          ${MONTH_KEYS.map(m=>`<button data-month="${m}" class="${m===mk?'active':''}"${isPastMonth(m)&&APP.isAdmin?' title="Doble clic para bloquear/desbloquear este mes"':''}>${MONTH_LABELS[m].slice(0,3)}${isMonthLocked(m)?`<span class="tab-lock">${iconLock(false)}</span>`:''}</button>`).join('')}
         </div>
       </div>
     </div>
@@ -2632,7 +2638,7 @@ function renderConexion(main){
       </table>
       </div>
     </div>
-    <div class="foot-note">Se muestran de lunes a sábado (los sábados son guardia, normalmente le toca a una persona por vez, una vez al mes). Escribí la hora como hh:mm y agregá una nota pegada al lado para justificar horarios especiales — ej. <b>13:00 G</b> (guardia), <b>13:35 FL</b> (flex, media jornada), <b>13:10 ART</b>, o cualquier otra demora justificada. Hacé clic en el cuadro de Entrada o Salida para pintarlo: 1er clic = verde, 2do clic = rojo, 3er clic = sin color.</div>
+    <div class="foot-note">Se muestran de lunes a sábado (los sábados son guardia, normalmente le toca a una persona por vez, una vez al mes). Escribí la hora como hh:mm y agregá una nota pegada al lado para justificar horarios especiales — ej. <b>13:00 G</b> (guardia), <b>13:35 FL</b> (flex, media jornada), <b>13:10 ART</b>, o cualquier otra demora justificada. Hacé clic en el cuadro de Entrada o Salida para pintarlo: 1er clic = verde, 2do clic = rojo, 3er clic = sin color. Los meses anteriores al actual se bloquean automáticamente para que no se editen por error; hacé doble clic en el mes para desbloquearlo si necesitás corregir algo.</div>
   `;
 
   document.getElementById('conex-month-tabs').addEventListener('click', (e)=>{
@@ -2640,6 +2646,11 @@ function renderConexion(main){
     if(!btn) return;
     APP.conexMonth = btn.dataset.month;
     render();
+  });
+  document.getElementById('conex-month-tabs').addEventListener('dblclick', (e)=>{
+    const btn = e.target.closest('button[data-month]');
+    if(!btn) return;
+    toggleMonthLock(btn.dataset.month);
   });
   main.querySelectorAll('th[data-open]').forEach(th=> th.addEventListener('click', ()=> goToColaborador(th.dataset.open)));
 
@@ -2649,6 +2660,7 @@ function renderConexion(main){
     theadRows[1].querySelectorAll('th').forEach(th=> th.style.top = rowHeight+'px');
   }
 
+  const locked = isMonthLocked(mk);
   const tbody = document.getElementById('conex-tbody');
   days.forEach(date=>{
     const isSaturday = new Date(date+'T00:00:00').getDay()===6;
@@ -2659,17 +2671,19 @@ function renderConexion(main){
       const entry = getConexEntry(date, name);
       const inTag = hasConexTag(entry.in) ? ' has-tag' : '';
       const outTag = hasConexTag(entry.out) ? ' has-tag' : '';
-      const inCls = 'mono conex-input ' + conexColorClass(entry.colorIn) + inTag;
-      const outCls = 'mono conex-input ' + conexColorClass(entry.colorOut) + outTag;
+      const inCls = 'mono conex-input ' + conexColorClass(entry.colorIn) + inTag + (locked?' locked':'');
+      const outCls = 'mono conex-input ' + conexColorClass(entry.colorOut) + outTag + (locked?' locked':'');
       const dividerStyle = i>0 ? 'border-left:1px solid var(--line);' : '';
-      cells += `<td style="${dividerStyle}"><input type="text" class="${inCls}" data-date="${date}" data-name="${name}" data-field="in" data-colorfield="colorIn" value="${fmtTimeShort(entry.in)}" style="width:90px;" placeholder="—"></td>`;
-      cells += `<td><input type="text" class="${outCls}" data-date="${date}" data-name="${name}" data-field="out" data-colorfield="colorOut" value="${fmtTimeShort(entry.out)}" style="width:90px;" placeholder="—"></td>`;
+      const lockAttrs = locked ? 'readonly title="Mes bloqueado — hacé doble clic en el mes para editar"' : '';
+      cells += `<td style="${dividerStyle}"><input type="text" class="${inCls}" data-date="${date}" data-name="${name}" data-field="in" data-colorfield="colorIn" value="${fmtTimeShort(entry.in)}" style="width:90px;" placeholder="—" ${lockAttrs}></td>`;
+      cells += `<td><input type="text" class="${outCls}" data-date="${date}" data-name="${name}" data-field="out" data-colorfield="colorOut" value="${fmtTimeShort(entry.out)}" style="width:90px;" placeholder="—" ${lockAttrs}></td>`;
     });
     tr.innerHTML = cells;
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('.conex-input').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
+      if(locked) return;
       const {date:d, name:nm, field} = inp.dataset;
       let val = inp.value.trim();
       const m = val.match(/^(\d{1,2}):(\d{2})(.*)$/);
@@ -2680,6 +2694,7 @@ function renderConexion(main){
     });
     inp.addEventListener('click', async (e)=>{
       e.preventDefault();
+      if(locked) return;
       const {date:d, name:nm, colorfield} = inp.dataset;
       const entry = getConexEntry(d, nm);
       const cur = entry[colorfield];
