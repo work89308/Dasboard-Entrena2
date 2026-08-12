@@ -339,6 +339,14 @@ tbody tr:hover{ background: #FAFBFB; }
 .conex-scroll{ max-height:65vh; overflow-y:auto; }
 .conex-vertical thead th{ position:sticky; background:#F2F5F5; z-index:2; }
 .conex-vertical thead tr:first-child th{ top:0; z-index:3; }
+.conex-vertical .conex-date-col{ position:sticky; left:0; border-right:1px solid var(--line); }
+.conex-vertical thead tr:first-child th.conex-date-col{ z-index:5; background:#F2F5F5; }
+.conex-vertical tbody td.conex-date-col{ z-index:1; background:var(--bg-panel); }
+.conex-vertical tbody tr.conex-saturday td.conex-date-col{ background:#F2F5F5; }
+.conex-vertical tbody tr:hover td.conex-date-col{ background:#FAFBFB; }
+:root.dark .conex-vertical thead th.conex-date-col{ background:#1D2A2B; }
+:root.dark .conex-vertical tbody tr.conex-saturday td.conex-date-col{ background:#1D2A2B; }
+:root.dark .conex-vertical tbody tr:hover td.conex-date-col{ background:#1D2A2B; }
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
 .conex-vertical input{ text-align:center; padding:5px 4px; }
 .conex-input.conex-ok{ background: var(--brand-soft); border-color:#CFE7E2; }
@@ -2627,7 +2635,7 @@ function renderConexion(main){
       <table class="conex-vertical">
         <thead>
           <tr>
-            <th rowspan="2" style="min-width:100px;">Fecha</th>
+            <th rowspan="2" class="conex-date-col" style="min-width:100px;">Fecha</th>
             ${NAMES.map((n,i)=>`<th colspan="2" style="cursor:pointer; color:${COLOR[n]}; ${i>0?'border-left:1px solid var(--line);':''}" data-open="${n}">${n.split(' ')[0]} ${n.split(' ')[1]?.[0]||''}.</th>`).join('')}
           </tr>
           <tr>
@@ -2666,7 +2674,7 @@ function renderConexion(main){
     const isSaturday = new Date(date+'T00:00:00').getDay()===6;
     const tr = document.createElement('tr');
     if(isSaturday) tr.className = 'conex-saturday';
-    let cells = `<td class="mono" style="white-space:nowrap;">${isSaturday ? `<b>${fmtDateCompact(date)}</b>` : fmtDateCompact(date)}</td>`;
+    let cells = `<td class="mono conex-date-col" style="white-space:nowrap;">${isSaturday ? `<b>${fmtDateCompact(date)}</b>` : fmtDateCompact(date)}</td>`;
     NAMES.forEach((name,i)=>{
       const entry = getConexEntry(date, name);
       const inTag = hasConexTag(entry.in) ? ' has-tag' : '';
