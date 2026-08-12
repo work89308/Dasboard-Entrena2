@@ -2444,7 +2444,7 @@ function renderProductividad(main){
         val = parseFloat(val.replace(',','.'));
       }
       await setMetric(nm, mkk, field, val);
-      render();
+      inp.value = TIME_FIELDS.includes(field) ? fmtTimeShort(val) : (val==null?'':String(val));
     });
   });
 }
