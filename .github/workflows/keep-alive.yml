@@ -1,0 +1,16 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    - cron: '0 12 * * 1,4'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase para evitar la pausa por inactividad
+        run: |
+          curl -sf "https://kakjzaviulnccldccucl.supabase.co/rest/v1/dashboard_overrides?select=id&limit=1" \
+            -H "apikey: sb_publishable_AAPMZ4poPfvsJuYuKBW7rA_o5dMn5ND" \
+            -H "Authorization: Bearer sb_publishable_AAPMZ4poPfvsJuYuKBW7rA_o5dMn5ND"
