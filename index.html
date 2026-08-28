@@ -55,7 +55,6 @@
   --accent-coral-soft: rgba(214,91,69,0.18);
   --shadow: 0 2px 6px rgba(0,0,0,0.35), 0 14px 30px rgba(0,0,0,0.32);
 }
-@media (hover: hover) and (pointer: fine){ :root.dark tbody tr:hover{ background:#1D2A2B; } }
 :root.dark td{ border-bottom-color:#243334; }
 :root.dark .conex-saturday td{ background:#1D2A2B; }
 :root.dark .conex-input.conex-neutral{ background:#1D2A2B; border-color:#2B3A3B; }
@@ -145,14 +144,17 @@ body{
   color:#C9E2DD; font-size:13.5px; font-weight:500;
   cursor:pointer; user-select:none;
   border:1px solid transparent;
-  transition: background .15s ease, color .15s ease, transform 100ms ease-out;
+  transition: background .15s ease, color .15s ease, transform 100ms ease-out, box-shadow .15s ease;
 }
-.nav-item svg{ width:17px; height:17px; opacity:.85; flex-shrink:0; }
-@media (hover: hover) and (pointer: fine){ .nav-item:hover{ background: rgba(255,255,255,0.06); color:#fff; } }
+.nav-item svg{ width:17px; height:17px; opacity:.85; flex-shrink:0; transition: opacity .15s ease; }
+@media (hover: hover) and (pointer: fine){
+  .nav-item:hover{ background: rgba(255,255,255,0.13); color:#fff; box-shadow: inset 3px 0 0 0 rgba(255,255,255,0.4); }
+  .nav-item:hover svg{ opacity:1; }
+}
 .nav-item:active{ transform: scale(0.98); }
 .nav-item.active{
   background: rgba(0,0,0,0.28); color:#fff; border-color:transparent; font-weight:600;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.07);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.07), inset 3px 0 0 0 #4FD8B8;
 }
 .nav-badge{
   margin-left:auto; flex-shrink:0; background:var(--accent-mint); color:#0B2E2A;
@@ -359,11 +361,15 @@ th{
   color: var(--ink-faint); font-weight:600; padding: 9px 10px; border-bottom:1px solid var(--line);
   white-space:nowrap;
 }
-td{ padding: 10px 10px; border-bottom:1px solid #EEF2F2; vertical-align:middle; }
+td{ padding: 10px 10px; border-bottom:1px solid #EEF2F2; vertical-align:middle; transition: background-color .15s ease; }
 tr:last-child td{ border-bottom:none; }
-@media (hover: hover) and (pointer: fine){ tbody tr:hover{ background: #FAFBFB; } }
+@media (hover: hover) and (pointer: fine){
+  tbody tr:hover td{ background: var(--brand-soft); }
+  tbody tr:hover td:first-child{ box-shadow: inset 3px 0 0 0 var(--brand); }
+}
 #mon-tbody td, #inbox-tbody td{ height:52px; }
 .name-cell{ display:flex; align-items:center; gap:9px; }
+@media (hover: hover) and (pointer: fine){ .name-cell[data-open]:hover span{ color: var(--brand); } }
 .name-cell[data-open]{ cursor:pointer; }
 .name-cell-actions{ display:flex; align-items:center; gap:2px; margin-left:auto; flex-shrink:0; }
 .name-edit-btn{ border:none; background:none; cursor:pointer; color:var(--ink-faint); padding:2px 4px; flex-shrink:0; display:flex; align-items:center; }
