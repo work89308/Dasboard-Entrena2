@@ -354,6 +354,20 @@ body.visitor-mode #equipo-nota-add{
 .avatar-stack .avatar:first-child{ margin-left:0; }
 .avatar-stack .avatar.more{ background:var(--brand); color:#fff; }
 
+/* ---------- skeleton (estado de carga) ---------- */
+.skeleton{
+  position:relative; overflow:hidden;
+  background: var(--line); border-radius:6px;
+}
+.skeleton::after{
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+:root.dark .skeleton::after{ background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); }
+@keyframes skeleton-shimmer{ 0%{ transform: translateX(-100%); } 100%{ transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce){ .skeleton::after{ animation:none; content:none; } }
+
 /* ---------- table ---------- */
 table{ width:100%; border-collapse: collapse; font-size:13px; }
 th{
@@ -478,6 +492,11 @@ select, input[type="date"], input[type="text"], input[type="number"]{
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 select:focus, input:focus{ border-color: var(--brand); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible,
+[data-open]:focus-visible, .kpi-click:focus-visible{
+  outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px;
+}
+.nav-item:focus-visible{ outline: 2px solid #7FE0C6; outline-offset: -2px; }
 
 .toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
 .toolbar .spacer{ flex:1; }
@@ -623,23 +642,23 @@ select:focus, input:focus{ border-color: var(--brand); }
       <button id="theme-toggle" class="theme-toggle-icon" title="Cambiar modo claro/oscuro"></button>
     </div>
     <nav class="nav" id="nav">
-      <div class="nav-item active" data-view="resumen">
+      <div class="nav-item active" data-view="resumen" tabindex="0" role="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
         Resumen
       </div>
-      <div class="nav-item" data-view="equipo">
+      <div class="nav-item" data-view="equipo" tabindex="0" role="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 21c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17.5" cy="8.5" r="2.5"/><path d="M15.5 12.2c2.6.2 4.7 2.3 5 5.3"/></svg>
         Equipo
       </div>
-      <div class="nav-item" data-view="productividad">
+      <div class="nav-item" data-view="productividad" tabindex="0" role="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V10M11 19V5M18 19v-7"/><path d="M2 19h20"/></svg>
         Productividad
       </div>
-      <div class="nav-item" data-view="conexion">
+      <div class="nav-item" data-view="conexion" tabindex="0" role="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
         Conexión diaria
       </div>
-      <div class="nav-item" data-view="monitoreos">
+      <div class="nav-item" data-view="monitoreos" tabindex="0" role="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
         Monitoreos y devoluciones
         <span class="nav-badge" id="nav-badge-monitoreos" style="display:none;"></span>
@@ -660,7 +679,33 @@ select:focus, input:focus{ border-color: var(--brand); }
       <b>Equipo Entrenados</b>
     </div>
     <main class="main" id="main">
-      <!-- views injected by JS -->
+      <div class="topbar">
+        <div>
+          <div class="skeleton" style="width:220px; height:22px; margin-bottom:9px;"></div>
+          <div class="skeleton" style="width:320px; height:13px;"></div>
+        </div>
+      </div>
+      <div class="grid grid-kpi">
+        <div class="kpi"><div class="skeleton" style="width:70px; height:11px; margin-bottom:16px;"></div><div class="skeleton" style="width:50px; height:24px;"></div></div>
+        <div class="kpi"><div class="skeleton" style="width:70px; height:11px; margin-bottom:16px;"></div><div class="skeleton" style="width:50px; height:24px;"></div></div>
+        <div class="kpi"><div class="skeleton" style="width:70px; height:11px; margin-bottom:16px;"></div><div class="skeleton" style="width:50px; height:24px;"></div></div>
+        <div class="kpi"><div class="skeleton" style="width:70px; height:11px; margin-bottom:16px;"></div><div class="skeleton" style="width:50px; height:24px;"></div></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="skeleton" style="width:160px; height:15px; margin-bottom:20px;"></div>
+          <div class="skeleton" style="width:100%; height:13px; margin-bottom:12px;"></div>
+          <div class="skeleton" style="width:100%; height:13px; margin-bottom:12px;"></div>
+          <div class="skeleton" style="width:100%; height:13px; margin-bottom:12px;"></div>
+          <div class="skeleton" style="width:100%; height:13px;"></div>
+        </div>
+        <div class="card">
+          <div class="skeleton" style="width:160px; height:15px; margin-bottom:20px;"></div>
+          <div class="skeleton" style="width:120px; height:120px; border-radius:50%; margin:10px auto 20px auto;"></div>
+          <div class="skeleton" style="width:100%; height:13px; margin-bottom:12px;"></div>
+          <div class="skeleton" style="width:100%; height:13px;"></div>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -1547,14 +1592,24 @@ function donutSvg(parts){
 }
 
 /* ---------------- nav ---------------- */
-document.getElementById('nav').addEventListener('click', (e)=>{
-  const item = e.target.closest('.nav-item');
-  if(!item) return;
+function activateNavItem(item){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   item.classList.add('active');
   APP.view = item.dataset.view;
   render();
   document.body.classList.remove('sidebar-open');
+}
+document.getElementById('nav').addEventListener('click', (e)=>{
+  const item = e.target.closest('.nav-item');
+  if(!item) return;
+  activateNavItem(item);
+});
+document.getElementById('nav').addEventListener('keydown', (e)=>{
+  if(e.key!=='Enter' && e.key!==' ') return;
+  const item = e.target.closest('.nav-item');
+  if(!item) return;
+  e.preventDefault();
+  activateNavItem(item);
 });
 
 /* ---------------- mobile sidebar toggle ---------------- */
@@ -1590,6 +1645,15 @@ function goToColaborador(name){
   const item = document.querySelector('.nav-item[data-view="colaborador"]');
   if(item) item.classList.add('active');
   render();
+}
+function bindGoToColaborador(el){
+  el.tabIndex = 0;
+  el.addEventListener('click', ()=> goToColaborador(el.dataset.open));
+  el.addEventListener('keydown', (e)=>{
+    if(e.key!=='Enter' && e.key!==' ') return;
+    e.preventDefault();
+    goToColaborador(el.dataset.open);
+  });
 }
 
 /* ================= RESUMEN ================= */
@@ -1712,9 +1776,7 @@ function renderResumen(main){
   `;
 
   // ---- populate DOM ----
-  document.getElementById('resumen-avatar-stack').querySelectorAll('[data-open]').forEach(el=>{
-    el.addEventListener('click', ()=> goToColaborador(el.dataset.open));
-  });
+  document.getElementById('resumen-avatar-stack').querySelectorAll('[data-open]').forEach(bindGoToColaborador);
   const stackMore = document.querySelector('[data-view-link="equipo"]');
   if(stackMore) stackMore.addEventListener('click', ()=>{
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -1740,7 +1802,7 @@ function renderResumen(main){
     `;
     rtbody.appendChild(tr);
   });
-  rtbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  rtbody.querySelectorAll('[data-open]').forEach(bindGoToColaborador);
 
   const cardsWrap = document.getElementById('resumen-cards');
   NAMES.forEach(name=>{
@@ -1750,6 +1812,7 @@ function renderResumen(main){
     const card = document.createElement('div');
     card.className='kpi kpi-click';
     card.style.cursor='pointer';
+    card.dataset.open = name;
     card.innerHTML = `
       <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
         ${avatar(name,34)}
@@ -1765,7 +1828,7 @@ function renderResumen(main){
       </div>
       <div style="margin-top:10px;">${monitoreoBadge(m)}</div>
     `;
-    card.addEventListener('click', ()=> goToColaborador(name));
+    bindGoToColaborador(card);
     cardsWrap.appendChild(card);
   });
 
@@ -1904,9 +1967,7 @@ function renderEquipo(main){
     `;
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('[data-open]').forEach(el=>{
-    el.addEventListener('click', ()=> goToColaborador(el.dataset.open));
-  });
+  tbody.querySelectorAll('[data-open]').forEach(bindGoToColaborador);
   tbody.querySelectorAll('.name-edit-btn').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -2538,7 +2599,7 @@ function renderProductividad(main){
     `;
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  tbody.querySelectorAll('[data-open]').forEach(bindGoToColaborador);
   tbody.querySelectorAll('.metric-input').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
       if(!APP.isAdmin || isMonthLocked(inp.dataset.mk)) return;
@@ -2622,7 +2683,7 @@ function renderMonitoreos(main){
     `;
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  tbody.querySelectorAll('[data-open]').forEach(bindGoToColaborador);
   tbody.querySelectorAll('input[type="date"]').forEach(inp=>{
     inp.addEventListener('change', async ()=>{
       if(!APP.isAdmin) return;
@@ -2647,7 +2708,7 @@ function renderMonitoreos(main){
     `;
     inboxTbody.appendChild(tr);
   });
-  inboxTbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  inboxTbody.querySelectorAll('[data-open]').forEach(bindGoToColaborador);
   inboxTbody.querySelectorAll('.inbox-dot').forEach(dot=>{
     dot.addEventListener('click', async ()=>{
       const name = dot.dataset.name, mkey = dot.dataset.month;
@@ -2674,7 +2735,7 @@ function renderMonitoreos(main){
     `;
     devolTbody.appendChild(tr);
   });
-  devolTbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
+  devolTbody.querySelectorAll('[data-open]').forEach(bindGoToColaborador);
   devolTbody.querySelectorAll('.devol1-input').forEach(inp=>{
     inp.addEventListener('change', async ()=>{ await setDevol1(inp.dataset.name, inp.value || null); render(); });
   });
@@ -2761,7 +2822,7 @@ function renderConexion(main){
     if(!btn) return;
     toggleMonthLock(btn.dataset.month);
   });
-  main.querySelectorAll('th[data-open]').forEach(th=> th.addEventListener('click', ()=> goToColaborador(th.dataset.open)));
+  main.querySelectorAll('th[data-open]').forEach(bindGoToColaborador);
 
   const theadRows = main.querySelectorAll('.conex-vertical thead tr');
   if(theadRows.length===2){
