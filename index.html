@@ -110,6 +110,14 @@ body{
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   transition: background-color .15s ease, color .15s ease;
+  animation: bg-drift 100s ease-in-out infinite;
+}
+@keyframes bg-drift{
+  0%, 100%{ background-position: center 20%; }
+  50%{ background-position: center 44%; }
+}
+@media (prefers-reduced-motion: reduce){
+  body{ animation: none; }
 }
 ::selection{ background: var(--accent-mint); color: #fff; }
 
