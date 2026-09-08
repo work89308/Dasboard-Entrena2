@@ -63,7 +63,7 @@
 :root.dark .sidebar::before{ background: radial-gradient(circle, #8B5CF6, transparent 70%); opacity:.55; }
 :root.dark .seg{ background:#1D2A2B; }
 :root.dark .seg button.active{ background:#243334; }
-:root.dark select, :root.dark input[type="date"], :root.dark input[type="text"], :root.dark input[type="number"], :root.dark .pill{
+:root.dark select, :root.dark input[type="date"], :root.dark input[type="text"], :root.dark input[type="number"], :root.dark input[type="email"], :root.dark input[type="password"], :root.dark .pill{
   background:#182324; color:var(--ink); border-color:#2B3A3B;
 }
 :root.dark h1, :root.dark .card h3, :root.dark .kpi .value, :root.dark .conex-saturday td.mono,
@@ -219,19 +219,18 @@ body.visitor-mode #equipo-nota-add{
   transition: transform 180ms var(--ease-out), opacity 180ms var(--ease-out);
 }
 .auth-gate.auth-gate-visible .auth-card{ transform: scale(1); opacity:1; }
-.auth-card h2{ font-family: var(--font-display); font-size:18px; margin:12px 0 4px 0; color:var(--brand-dark); }
-.auth-sub{ font-size:12.5px; color:var(--ink-soft); margin:0 0 20px 0; line-height:1.5; }
-.auth-card form{ display:flex; flex-direction:column; gap:12px; text-align:left; }
-.auth-card label{ font-size:12px; color:var(--ink-soft); display:flex; flex-direction:column; gap:5px; }
+.auth-card h2{ font-family: var(--font-display); font-size:17px; font-weight:600; margin:14px 0 26px 0; color:var(--brand-dark); }
+.auth-card form{ display:flex; flex-direction:column; gap:10px; text-align:left; }
+.auth-card label{ font-size:11.5px; color:var(--ink-soft); display:flex; flex-direction:column; gap:5px; }
 .auth-card input{ width:100%; }
 .auth-error{ background:var(--accent-coral-soft); color:#9A3B27; font-size:12px; padding:8px 10px; border-radius:8px; }
-.auth-card .btn.primary{ width:100%; padding:10px; font-size:13px; }
-.auth-link{ border:none; background:none; color:var(--brand); font-size:12px; cursor:pointer; margin-top:14px; padding:4px; }
-@media (hover: hover) and (pointer: fine){ .auth-link:hover{ text-decoration:underline; } }
-.auth-divider{ display:flex; align-items:center; gap:10px; margin:18px 0 14px 0; color:var(--ink-faint); font-size:11px; }
-.auth-divider::before, .auth-divider::after{ content:''; flex:1; height:1px; background:var(--line); }
-.auth-card .btn{ width:100%; padding:10px; font-size:13px; }
+.auth-card .btn.primary{ width:100%; padding:10px; font-size:13px; margin-top:6px; }
+.auth-footer{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:22px; }
+.auth-link{ border:none; background:none; color:var(--ink-faint); font-size:12px; cursor:pointer; padding:4px; }
+@media (hover: hover) and (pointer: fine){ .auth-link:hover{ color: var(--brand); } }
+.auth-footer-sep{ color:var(--ink-faint); font-size:12px; }
 :root.dark .auth-gate{ background: rgba(0,0,0,0.65); }
+:root.dark .auth-card h2{ color:#fff; }
 
 /* ---------- JS-created modal overlays (export, etc.) ---------- */
 .modal-overlay{
@@ -422,10 +421,16 @@ tr:last-child td{ border-bottom:none; }
 .conex-vertical thead tr:first-child th.conex-date-col{ z-index:5; background:#F2F5F5; }
 .conex-vertical tbody td.conex-date-col{ z-index:1; background:var(--bg-panel); }
 .conex-vertical tbody tr.conex-saturday td.conex-date-col{ background:#F2F5F5; }
-@media (hover: hover) and (pointer: fine){ .conex-vertical tbody tr:hover td.conex-date-col{ background:#FAFBFB; } }
+@media (hover: hover) and (pointer: fine){
+  .conex-vertical tbody tr:hover td{ background: var(--brand-dark); }
+  .conex-vertical tbody tr:hover td.conex-date-col{ background: var(--brand-dark); color:#fff; }
+}
 :root.dark .conex-vertical thead th.conex-date-col{ background:#1D2A2B; }
 :root.dark .conex-vertical tbody tr.conex-saturday td.conex-date-col{ background:#1D2A2B; }
-@media (hover: hover) and (pointer: fine){ :root.dark .conex-vertical tbody tr:hover td.conex-date-col{ background:#1D2A2B; } }
+@media (hover: hover) and (pointer: fine){
+  :root.dark .conex-vertical tbody tr:hover td{ background: var(--brand); }
+  :root.dark .conex-vertical tbody tr:hover td.conex-date-col{ background: var(--brand); color:#fff; }
+}
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
 .conex-vertical input{ text-align:center; padding:5px 4px; }
 .conex-input.conex-ok{ background: var(--brand-soft); border-color:#CFE7E2; }
@@ -472,7 +477,7 @@ tr:last-child td{ border-bottom:none; }
 .btn:active{ transform: scale(0.97); }
 .btn.primary{ background: linear-gradient(135deg, var(--accent-mint), var(--brand)); border-color:transparent; color:#fff; box-shadow:0 8px 18px rgba(30,110,104,0.28); }
 @media (hover: hover) and (pointer: fine){ .btn.primary:hover{ background: var(--brand-dark); } }
-select, input[type="date"], input[type="text"], input[type="number"]{
+select, input[type="date"], input[type="text"], input[type="number"], input[type="email"], input[type="password"]{
   font-family: var(--font-body); font-size:12.5px; padding:7px 10px; border-radius:8px;
   border:1px solid var(--line); background:#fff; color:var(--ink); outline:none;
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
@@ -592,16 +597,17 @@ select:focus, input:focus{ border-color: var(--brand); }
   <div class="auth-card">
     <div class="brand-mark" style="margin:0 auto 14px auto;"></div>
     <h2>Equipo Entrenados</h2>
-    <p class="auth-sub">Iniciá sesión para editar los datos del equipo, o entrá como invitado para solo ver el tablero.</p>
     <form id="auth-form">
-      <label>Email<input type="email" id="auth-email" autocomplete="username" required></label>
-      <label>Contraseña<input type="password" id="auth-password" autocomplete="current-password" required minlength="6"></label>
+      <label>Email<input type="email" id="auth-email" autocomplete="username" placeholder="tu@email.com" required></label>
+      <label>Contraseña<input type="password" id="auth-password" autocomplete="current-password" placeholder="••••••••" required minlength="6"></label>
       <div class="auth-error" id="auth-error" style="display:none;"></div>
       <button type="submit" class="btn primary" id="auth-submit">Iniciar sesión</button>
     </form>
-    <button type="button" class="auth-link" id="auth-toggle-mode">¿Primera vez? Crear cuenta de administrador</button>
-    <div class="auth-divider"><span>o</span></div>
-    <button type="button" class="btn" id="auth-guest">Continuar como invitado</button>
+    <div class="auth-footer">
+      <button type="button" class="auth-link" id="auth-toggle-mode">Crear cuenta</button>
+      <span class="auth-footer-sep">·</span>
+      <button type="button" class="auth-link" id="auth-guest">Continuar como invitado</button>
+    </div>
   </div>
 </div>
 <div class="app">
@@ -972,7 +978,7 @@ function initAuthGate(){
     function setMode(mode){
       gateMode = mode;
       submitBtn.textContent = mode==='signup' ? 'Crear cuenta' : 'Iniciar sesión';
-      toggleBtn.textContent = mode==='signup' ? '¿Ya tenés cuenta? Iniciar sesión' : '¿Primera vez? Crear cuenta de administrador';
+      toggleBtn.textContent = mode==='signup' ? 'Iniciar sesión' : 'Crear cuenta';
       clearError();
     }
     setMode('signin');
