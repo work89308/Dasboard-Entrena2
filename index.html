@@ -63,7 +63,7 @@
 :root.dark .sidebar::before{ background: radial-gradient(circle, #8B5CF6, transparent 70%); opacity:.55; }
 :root.dark .seg{ background:#1D2A2B; }
 :root.dark .seg button.active{ background:#243334; }
-:root.dark select, :root.dark input[type="date"], :root.dark input[type="text"], :root.dark input[type="number"], :root.dark .pill{
+:root.dark select, :root.dark input[type="date"], :root.dark input[type="text"], :root.dark input[type="number"], :root.dark input[type="email"], :root.dark input[type="password"], :root.dark .pill{
   background:#182324; color:var(--ink); border-color:#2B3A3B;
 }
 :root.dark h1, :root.dark .card h3, :root.dark .kpi .value, :root.dark .conex-saturday td.mono,
@@ -477,7 +477,7 @@ tr:last-child td{ border-bottom:none; }
 .btn:active{ transform: scale(0.97); }
 .btn.primary{ background: linear-gradient(135deg, var(--accent-mint), var(--brand)); border-color:transparent; color:#fff; box-shadow:0 8px 18px rgba(30,110,104,0.28); }
 @media (hover: hover) and (pointer: fine){ .btn.primary:hover{ background: var(--brand-dark); } }
-select, input[type="date"], input[type="text"], input[type="number"]{
+select, input[type="date"], input[type="text"], input[type="number"], input[type="email"], input[type="password"]{
   font-family: var(--font-body); font-size:12.5px; padding:7px 10px; border-radius:8px;
   border:1px solid var(--line); background:#fff; color:var(--ink); outline:none;
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
