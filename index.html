@@ -422,10 +422,16 @@ tr:last-child td{ border-bottom:none; }
 .conex-vertical thead tr:first-child th.conex-date-col{ z-index:5; background:#F2F5F5; }
 .conex-vertical tbody td.conex-date-col{ z-index:1; background:var(--bg-panel); }
 .conex-vertical tbody tr.conex-saturday td.conex-date-col{ background:#F2F5F5; }
-@media (hover: hover) and (pointer: fine){ .conex-vertical tbody tr:hover td.conex-date-col{ background:#FAFBFB; } }
+@media (hover: hover) and (pointer: fine){
+  .conex-vertical tbody tr:hover td{ background: var(--brand-dark); }
+  .conex-vertical tbody tr:hover td.conex-date-col{ background: var(--brand-dark); color:#fff; }
+}
 :root.dark .conex-vertical thead th.conex-date-col{ background:#1D2A2B; }
 :root.dark .conex-vertical tbody tr.conex-saturday td.conex-date-col{ background:#1D2A2B; }
-@media (hover: hover) and (pointer: fine){ :root.dark .conex-vertical tbody tr:hover td.conex-date-col{ background:#1D2A2B; } }
+@media (hover: hover) and (pointer: fine){
+  :root.dark .conex-vertical tbody tr:hover td{ background: var(--brand); }
+  :root.dark .conex-vertical tbody tr:hover td.conex-date-col{ background: var(--brand); color:#fff; }
+}
 .conex-vertical td, .conex-vertical th{ text-align:center; padding:6px 8px; font-size:12px; }
 .conex-vertical input{ text-align:center; padding:5px 4px; }
 .conex-input.conex-ok{ background: var(--brand-soft); border-color:#CFE7E2; }
