@@ -199,7 +199,8 @@ body.visitor-mode #colab-add-date,
 body.visitor-mode #colab-new-date,
 body.visitor-mode #equipo-nota-fecha,
 body.visitor-mode #equipo-nota-texto,
-body.visitor-mode #equipo-nota-add{
+body.visitor-mode #equipo-nota-add,
+body.visitor-mode #colab-baja-btn{
   pointer-events:none; opacity:.55; cursor:default;
 }
 
@@ -655,7 +656,7 @@ select:focus, input:focus{ border-color: var(--brand); }
     </nav>
     <div class="sidebar-foot">
       <span id="foot-date"></span>
-      <span>10 personas activas</span>
+      <span id="foot-active-count"></span>
       <span id="auth-status"></span>
     </div>
   </aside>
@@ -706,7 +707,7 @@ const APP = {
   colabTab: 'productividad',
   lastUpdated: null,
   bannerDismissed: { resumen:false, monitoreos:false, birthdays:false },
-  overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, devol1_check:{}, devol2_check:{}, inbox:{}, nameRenames:{}, birthdays:{}, notas_equipo:[] },
+  overrides: { roster:{}, roster_month:{}, monitoreos:{}, prod_check:{}, metrics:{}, conex:{}, devol1:{}, devol2:{}, devol1_check:{}, devol2_check:{}, inbox:{}, nameRenames:{}, birthdays:{}, bajas:{}, notas_equipo:[] },
   unlockedMonths: new Set(), // meses anteriores desbloqueados manualmente para esta sesión (no se persiste)
 };
 function isPastMonth(mk){ return MONTH_KEYS.indexOf(mk) < MONTH_KEYS.indexOf(CURRENT_MONTH_KEY); }
@@ -719,7 +720,7 @@ const LOCAL_KEY = 'torre-control-overrides';
 const SUPABASE_URL = 'https://kakjzaviulnccldccucl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_AAPMZ4poPfvsJuYuKBW7rA_o5dMn5ND';
 const OVERRIDES_ROW_ID = 'main';
-const DEFAULT_OVERRIDES = {roster:{},roster_month:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},devol1_check:{},devol2_check:{},inbox:{},nameRenames:{},birthdays:{},notas_equipo:[]};
+const DEFAULT_OVERRIDES = {roster:{},roster_month:{},monitoreos:{},prod_check:{},metrics:{},conex:{},devol1:{},devol2:{},devol1_check:{},devol2_check:{},inbox:{},nameRenames:{},birthdays:{},bajas:{},notas_equipo:[]};
 const supabaseClient = (typeof window.supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
@@ -1214,6 +1215,7 @@ function migrateName(oldName, newName){
   rekeyProp(APP.overrides.devol2_check, oldName, newName);
   rekeyProp(APP.overrides.inbox, oldName, newName);
   rekeyProp(APP.overrides.birthdays, oldName, newName);
+  rekeyProp(APP.overrides.bajas, oldName, newName);
 
   if(COLOR[oldName]!=null){ COLOR[newName] = COLOR[oldName]; delete COLOR[oldName]; }
   const idx = NAMES.indexOf(oldName);
@@ -1358,6 +1360,42 @@ async function setBirthday(name, mm, dd){
   markDirty(`birthdays.${name}`);
   await saveOverrides();
 }
+// Bajas: quien deja el equipo no se borra (se conserva todo su historial);
+// se guarda desde qué mes ("YYYY-MM") deja de figurar. En ese mes y los
+// siguientes no aparece en las planillas ni cuenta en los totales, pero los
+// meses anteriores la siguen mostrando y su ficha queda accesible.
+function getBaja(name){
+  return (APP.overrides.bajas && APP.overrides.bajas[name]) || null;
+}
+function monthId(mk){
+  return `${TODAY.getFullYear()}-${String(MONTH_KEYS.indexOf(mk)+1).padStart(2,'0')}`;
+}
+function bajaLabel(baja){
+  const [y, m] = baja.split('-');
+  return `${MONTH_LABELS[MONTH_KEYS[Number(m)-1]]} ${y}`;
+}
+function isActiveIn(name, mk){
+  const baja = getBaja(name);
+  return !baja || monthId(mk || CURRENT_MONTH_KEY) < baja;
+}
+function activeNames(mk){
+  return NAMES.filter(n=> isActiveIn(n, mk));
+}
+async function setBaja(name, value){
+  if(!APP.isAdmin) return;
+  if(!APP.overrides.bajas) APP.overrides.bajas = {};
+  APP.overrides.bajas[name] = value || null;
+  markDirty(`bajas.${name}`);
+  await saveOverrides();
+}
+// Opciones de persona para los selectores (ficha y exportar PDF): primero el
+// equipo actual y, aparte, quienes ya no están, para poder consultar su historial.
+function personOptionsHtml(selected){
+  const opt = n=> `<option value="${n}" ${n===selected?'selected':''}>${n}</option>`;
+  const inactivos = NAMES.filter(n=> !isActiveIn(n));
+  return activeNames().map(opt).join('')
+    + (inactivos.length ? `<optgroup label="Ya no están en el equipo">${inactivos.map(opt).join('')}</optgroup>` : '');
+}
 function getEquipoNotas(){
   return (APP.overrides.notas_equipo || []).slice().sort((a,b)=> (b.fecha||'').localeCompare(a.fecha||'') || b.id-a.id);
 }
@@ -1407,7 +1445,7 @@ function computeBirthdayAlerts(){
   const wStart = startOfWeek(today), wEnd = endOfWeek(today);
   const todayList = [];
   const weekList = [];
-  NAMES.forEach(name=>{
+  activeNames().forEach(name=>{
     const md = parseBirthdayMD(getBirthday(name));
     if(!md) return;
     const { date: occ, diffDays } = nearestBirthdayOccurrence(md.mm, md.dd, today);
@@ -1574,9 +1612,11 @@ document.getElementById('sidebar-backdrop').addEventListener('click', ()=>{
 });
 
 function updateNavBadges(){
+  const activeCount = document.getElementById('foot-active-count');
+  if(activeCount) activeCount.textContent = `${activeNames().length} personas activas`;
   const badge = document.getElementById('nav-badge-monitoreos');
   if(!badge) return;
-  const atrasados = NAMES.filter(n=>{ const m = getMonitoreo(n); return m.dias!=null && m.dias>10; }).length;
+  const atrasados = activeNames().filter(n=>{ const m = getMonitoreo(n); return m.dias!=null && m.dias>10; }).length;
   badge.textContent = atrasados;
   badge.style.display = atrasados ? 'inline-block' : 'none';
 }
@@ -1602,30 +1642,31 @@ function goToColaborador(name){
 
 /* ================= RESUMEN ================= */
 function renderResumen(main){
+  const team = activeNames();
   const mk = latestMonthWithData();
-  const metrics = {}; NAMES.forEach(n=>{ metrics[n] = getMetric(n, mk); });
-  const tmoVals = NAMES.map(n=>timeToMinutes(metrics[n] && metrics[n].TMO)).filter(v=>v!=null);
+  const metrics = {}; team.forEach(n=>{ metrics[n] = getMetric(n, mk); });
+  const tmoVals = team.map(n=>timeToMinutes(metrics[n] && metrics[n].TMO)).filter(v=>v!=null);
   const tmoAvg = tmoVals.length ? tmoVals.reduce((a,b)=>a+b,0)/tmoVals.length : null;
-  const datosVals = NAMES.map(n=> metrics[n] && metrics[n].ActDatos).filter(v=>v!=null);
+  const datosVals = team.map(n=> metrics[n] && metrics[n].ActDatos).filter(v=>v!=null);
   const datosAvg = datosVals.length ? (datosVals.reduce((a,b)=>a+b,0)/datosVals.length) : null;
 
-  const monitoreoRows = NAMES.map(n=>({name:n, ...getMonitoreo(n)}));
+  const monitoreoRows = team.map(n=>({name:n, ...getMonitoreo(n)}));
   const atrasados = monitoreoRows.filter(r=>r.dias!=null && r.dias>10).sort((a,b)=>b.dias-a.dias);
 
-  const homeCount = NAMES.filter(n=>modalidadClass(getRosterMonth(n, CURRENT_MONTH_KEY).modalidad)==='home').length;
-  const centralCount = NAMES.filter(n=>modalidadClass(getRosterMonth(n, CURRENT_MONTH_KEY).modalidad)==='central').length;
+  const homeCount = team.filter(n=>modalidadClass(getRosterMonth(n, CURRENT_MONTH_KEY).modalidad)==='home').length;
+  const centralCount = team.filter(n=>modalidadClass(getRosterMonth(n, CURRENT_MONTH_KEY).modalidad)==='central').length;
 
-  const podio = NAMES.map(n=>({name:n, v: metrics[n] && typeof metrics[n].ActDatos==='number' ? metrics[n].ActDatos : null}))
+  const podio = team.map(n=>({name:n, v: metrics[n] && typeof metrics[n].ActDatos==='number' ? metrics[n].ActDatos : null}))
     .filter(r=>r.v!=null).sort((a,b)=>b.v-a.v).slice(0,3);
   const medals = ['🥇','🥈','🥉'];
 
   const curMk = MONTH_KEYS[TODAY.getMonth()];
-  const inboxVals = NAMES.map(n=> getInboxCheck(n)[curMk]);
+  const inboxVals = team.map(n=> getInboxCheck(n)[curMk]);
   const inboxSi = inboxVals.filter(v=>v==='si').length;
-  const inboxPend = NAMES.length - inboxVals.filter(v=>v==='si'||v==='no'||v==='home').length;
+  const inboxPend = team.length - inboxVals.filter(v=>v==='si'||v==='no'||v==='home').length;
 
-  const stackNames = NAMES.slice(0,4);
-  const stackRest = NAMES.length - stackNames.length;
+  const stackNames = team.slice(0,4);
+  const stackRest = team.length - stackNames.length;
 
   main.innerHTML = `
     <div class="topbar">
@@ -1658,13 +1699,13 @@ function renderResumen(main){
       <div class="kpi kpi-icon">
         <div class="icon-badge mint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 21c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17.5" cy="8.5" r="2.5"/><path d="M15.5 12.2c2.6.2 4.7 2.3 5 5.3"/></svg></div>
         <div class="label">Equipo</div>
-        <div class="value">${NAMES.length}<small>personas</small></div>
+        <div class="value">${team.length}<small>personas</small></div>
         <div class="foot">${homeCount} home · ${centralCount} central</div>
       </div>
       <div class="kpi kpi-icon">
         <div class="icon-badge coral">${iconAlert()}</div>
         <div class="label">Monitoreos atrasados</div>
-        <div class="value">${atrasados.length}<small>/ ${NAMES.length}</small></div>
+        <div class="value">${atrasados.length}<small>/ ${team.length}</small></div>
         <div class="foot ${atrasados.length?'alert':'good'}">${atrasados.length? 'Requieren seguimiento' : 'Todo al día'}</div>
       </div>
       <div class="kpi kpi-icon">
@@ -1680,7 +1721,7 @@ function renderResumen(main){
       <div class="kpi kpi-icon">
         <div class="icon-badge blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l2 3h6l2-3h4"/><path d="M5 5h14l2 7v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-7Z"/></svg></div>
         <div class="label">Inbox · ${MONTH_LABELS[curMk]}</div>
-        <div class="value">${inboxSi}<small>/ ${NAMES.length}</small></div>
+        <div class="value">${inboxSi}<small>/ ${team.length}</small></div>
         <div class="foot ${inboxPend?'alert':'good'}">${inboxPend? inboxPend+' sin auditoría este mes' : 'Todo el equipo auditado'}</div>
       </div>
     </div>
@@ -1733,7 +1774,7 @@ function renderResumen(main){
   });
 
   const rtbody = document.getElementById('resumen-tbody');
-  NAMES.forEach(name=>{
+  team.forEach(name=>{
     const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
     const check = getProdCheck(name);
     const m = getMonitoreo(name);
@@ -1751,7 +1792,7 @@ function renderResumen(main){
   rtbody.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> goToColaborador(el.dataset.open)));
 
   const cardsWrap = document.getElementById('resumen-cards');
-  NAMES.forEach(name=>{
+  team.forEach(name=>{
     const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
     const v = metrics[name] || {};
     const m = getMonitoreo(name);
@@ -1784,7 +1825,7 @@ function renderResumen(main){
     {label:'Muy atrasado', val: monitoreoRows.filter(r=>r.dias!=null && r.dias>14).length, color:'var(--status-bad)'},
   ]);
 
-  const rankSorted = NAMES.map(n=>({name:n, v: (metrics[n] && typeof metrics[n].GDigital==='number') ? metrics[n].GDigital : 0}))
+  const rankSorted = team.map(n=>({name:n, v: (metrics[n] && typeof metrics[n].GDigital==='number') ? metrics[n].GDigital : 0}))
     .sort((a,b)=>b.v-a.v);
   document.getElementById('chart-rank').innerHTML = rankBarsHtml(rankSorted, '');
 
@@ -1833,7 +1874,7 @@ function renderEquipo(main){
     <div class="topbar">
       <div>
         <h1>Equipo</h1>
-        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Horario, modalidad y tarea se guardan por mes, porque cambian según el período. Hacé clic en un dato para editarlo. Usá el lápiz junto al nombre para renombrar a una persona (por ejemplo, al cambiar de integrantes).</p>
+        <p>Horarios, modalidad de trabajo y seguimiento de tareas. Horario, modalidad y tarea se guardan por mes, porque cambian según el período. Hacé clic en un dato para editarlo. Usá el lápiz junto al nombre solo para corregir cómo está escrito. Si alguien deja el equipo, no lo renombres (sus datos pasarían a la persona nueva): desactivá su perfil desde su ficha.</p>
       </div>
     </div>
 
@@ -1860,6 +1901,7 @@ function renderEquipo(main){
       </table>
       </div>
       ${statusLegend([['var(--status-done)','Dev1/Dev2 realizada'],['var(--status-none)','Sin dato']], 14)}
+      ${bajasNoteHtml(mk)}
     </div>
 
     <div class="card" style="margin-top:16px;">
@@ -1882,7 +1924,7 @@ function renderEquipo(main){
   });
   wireExportPicker('equipo-export-select', 'equipo-export-pdf');
   const tbody = document.getElementById('equipo-tbody');
-  NAMES.forEach(name=>{
+  activeNames(mk).forEach(name=>{
     const rm = getRosterMonth(name, mk);
     const mon = getMonitoreo(name);
     const check = getProdCheck(name);
@@ -1912,7 +1954,7 @@ function renderEquipo(main){
     `;
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('[data-open]').forEach(el=>{
+  main.querySelectorAll('[data-open]').forEach(el=>{
     el.addEventListener('click', ()=> goToColaborador(el.dataset.open));
   });
   tbody.querySelectorAll('.name-edit-btn').forEach(btn=>{
@@ -2029,6 +2071,14 @@ function renderEquipo(main){
   });
 }
 
+// Aviso al pie de Equipo con quienes ya no figuran en el mes elegido, con
+// acceso a su ficha para consultar el historial.
+function bajasNoteHtml(mk){
+  const fuera = NAMES.filter(n=> !isActiveIn(n, mk));
+  if(!fuera.length) return '';
+  return `<div class="foot-note" style="text-align:left; margin-top:12px;">Ya no están en el equipo en ${MONTH_LABELS[mk]}: ${fuera.map(n=>
+    `<span data-open="${n}" style="cursor:pointer; text-decoration:underline; font-weight:600;">${n}</span> (desde ${bajaLabel(getBaja(n))})`).join(', ')}. Hacé clic en el nombre para ver su ficha e historial.</div>`;
+}
 function modalidadSelect(name, current, mk){
   const opts = ['Central','Home','Palomitas','1ro de Mayo','Otro'];
   const cls = modalidadClass(current);
@@ -2100,6 +2150,7 @@ function renderColaborador(main){
   const name = APP.colaborador;
   const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
   const mon = getMonitoreo(name);
+  const baja = getBaja(name);
   const tab = APP.colabTab || 'productividad';
 
   main.innerHTML = `
@@ -2125,6 +2176,8 @@ function renderColaborador(main){
       </div>
       <div>${modalidadSelect(name, rm.modalidad, CURRENT_MONTH_KEY)}</div>
       <div>${monitoreoBadge(mon)}</div>
+      ${baja ? `<span class="badge neutral">${isActiveIn(name) ? 'Sale del equipo en' : 'Fuera del equipo desde'} ${bajaLabel(baja)}</span>` : ''}
+      <button class="btn" id="colab-baja-btn">${baja ? 'Reactivar perfil' : 'Desactivar perfil'}</button>
     </div>
     <div class="foot-note" style="margin:-10px 0 16px 0;">Horario, modalidad y tarea corresponden al mes en curso. Para ver o editar otros meses, andá a Equipo y elegí el mes.</div>
 
@@ -2138,11 +2191,14 @@ function renderColaborador(main){
   `;
 
   const sel = document.getElementById('colab-select');
-  NAMES.forEach(n=>{
-    const opt = document.createElement('option');
-    opt.value = n; opt.textContent = n;
-    if(n===name) opt.selected = true;
-    sel.appendChild(opt);
+  sel.innerHTML = personOptionsHtml(name);
+  document.getElementById('colab-baja-btn').addEventListener('click', async ()=>{
+    if(!APP.isAdmin) return;
+    if(!baja){ openBajaModal(name); return; }
+    if(confirm(`¿Reactivar el perfil de ${name}? Vuelve a aparecer en todas las planillas y totales.`)){
+      await setBaja(name, null);
+      render();
+    }
   });
   sel.addEventListener('change', ()=>{ APP.colaborador = sel.value; render(); });
   document.getElementById('colab-export-pdf').addEventListener('click', ()=> openExportModal(name));
@@ -2370,11 +2426,7 @@ function exportPickerHtml(selectId, btnId){
 }
 function wireExportPicker(selectId, btnId){
   const sel = document.getElementById(selectId);
-  NAMES.forEach(n=>{
-    const opt = document.createElement('option');
-    opt.value = n; opt.textContent = n;
-    sel.appendChild(opt);
-  });
+  sel.innerHTML = personOptionsHtml();
   document.getElementById(btnId).addEventListener('click', ()=> openExportModal(sel.value));
 }
 function openExportModal(name){
@@ -2413,6 +2465,43 @@ function openExportModal(name){
     if(checked.length>2){ alert('Elegí como máximo dos meses.'); return; }
     generatePDFReport(name, checked);
     closeModal();
+  });
+}
+
+function openBajaModal(name){
+  const existing = document.getElementById('baja-modal-overlay');
+  if(existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'baja-modal-overlay';
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="card modal-card" style="max-width:420px; width:100%; margin:0;">
+      <h3>Desactivar perfil de ${name}</h3>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin:-6px 0 12px;">Elegí desde qué mes deja de figurar. Desde ese mes ya no aparece en Resumen, Equipo, Productividad, Monitoreos ni Conexión diaria, y no cuenta en los totales. Los meses anteriores y todo su historial se conservan, y su ficha sigue disponible en el selector, en "Ya no están en el equipo". Se puede reactivar cuando quieras.</p>
+      <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink); margin-bottom:16px;">
+        Deja de figurar desde:
+        <select id="baja-month">
+          ${MONTH_KEYS.map(mk=>`<option value="${monthId(mk)}" ${mk===CURRENT_MONTH_KEY?'selected':''}>${MONTH_LABELS[mk]} ${TODAY.getFullYear()}</option>`).join('')}
+        </select>
+      </label>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="btn" id="baja-cancel">Cancelar</button>
+        <button class="btn primary" id="baja-confirm">Desactivar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=> overlay.classList.add('modal-visible'));
+  const closeModal = ()=>{
+    overlay.classList.remove('modal-visible');
+    overlay.addEventListener('transitionend', ()=> overlay.remove(), { once:true });
+  };
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
+  document.getElementById('baja-cancel').addEventListener('click', closeModal);
+  document.getElementById('baja-confirm').addEventListener('click', async ()=>{
+    await setBaja(name, document.getElementById('baja-month').value);
+    closeModal();
+    render();
   });
 }
 
@@ -2530,7 +2619,7 @@ function renderProductividad(main){
   wireExportPicker('prod-export-select', 'prod-export-pdf');
 
   const tbody = document.getElementById('prod-tbody');
-  NAMES.forEach(name=>{
+  activeNames(mk).forEach(name=>{
     const v = getMetric(name, mk);
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -2572,7 +2661,8 @@ function pctBadge(v){
 
 /* ================= MONITOREOS ================= */
 function renderMonitoreos(main){
-  const rows = NAMES.map(n=>({name:n, ...getMonitoreo(n)})).sort((a,b)=>{
+  const team = activeNames();
+  const rows = team.map(n=>({name:n, ...getMonitoreo(n)})).sort((a,b)=>{
     const da = a.dias==null?-1:a.dias, db=b.dias==null?-1:b.dias;
     return db-da;
   });
@@ -2642,7 +2732,7 @@ function renderMonitoreos(main){
   });
 
   const inboxTbody = document.getElementById('inbox-tbody');
-  NAMES.forEach(name=>{
+  team.forEach(name=>{
     const check = getInboxCheck(name);
     const rm = getRosterMonth(name, CURRENT_MONTH_KEY);
     const tr = document.createElement('tr');
@@ -2671,7 +2761,7 @@ function renderMonitoreos(main){
   });
 
   const devolTbody = document.getElementById('devol-tbody');
-  NAMES.forEach(name=>{
+  team.forEach(name=>{
     const d1 = getDevol1(name);
     const d2 = getDevol2(name);
     const tr = document.createElement('tr');
@@ -2721,6 +2811,7 @@ function renderConexion(main){
   if(!APP.conexMonth) APP.conexMonth = MONTH_KEYS[TODAY.getMonth()] || 'ene';
   const mk = APP.conexMonth;
   const days = daysOfMonth(YEAR, mk);
+  const team = activeNames(mk);
 
   main.innerHTML = `
     <div class="topbar">
@@ -2745,10 +2836,10 @@ function renderConexion(main){
         <thead>
           <tr>
             <th rowspan="2" class="conex-date-col" style="min-width:100px;">Fecha</th>
-            ${NAMES.map((n,i)=>`<th colspan="2" style="cursor:pointer; color:${COLOR[n]}; ${i>0?'border-left:1px solid var(--line);':''}" data-open="${n}">${n.split(' ')[0]} ${n.split(' ')[1]?.[0]||''}.</th>`).join('')}
+            ${team.map((n,i)=>`<th colspan="2" style="cursor:pointer; color:${COLOR[n]}; ${i>0?'border-left:1px solid var(--line);':''}" data-open="${n}">${n.split(' ')[0]} ${n.split(' ')[1]?.[0]||''}.</th>`).join('')}
           </tr>
           <tr>
-            ${NAMES.map((n,i)=>`<th style="min-width:78px; ${i>0?'border-left:1px solid var(--line);':''}">Entrada</th><th style="min-width:78px;">Salida</th>`).join('')}
+            ${team.map((n,i)=>`<th style="min-width:78px; ${i>0?'border-left:1px solid var(--line);':''}">Entrada</th><th style="min-width:78px;">Salida</th>`).join('')}
           </tr>
         </thead>
         <tbody id="conex-tbody"></tbody>
@@ -2784,7 +2875,7 @@ function renderConexion(main){
     const tr = document.createElement('tr');
     if(isSaturday) tr.className = 'conex-saturday';
     let cells = `<td class="mono conex-date-col" style="white-space:nowrap;">${isSaturday ? `<b>${fmtDateCompact(date)}</b>` : fmtDateCompact(date)}</td>`;
-    NAMES.forEach((name,i)=>{
+    team.forEach((name,i)=>{
       const entry = getConexEntry(date, name);
       const inTag = hasConexTag(entry.in) ? ' has-tag' : '';
       const outTag = hasConexTag(entry.out) ? ' has-tag' : '';
